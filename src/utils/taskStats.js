@@ -3,8 +3,6 @@ import {
   formatDate,
   getCurrentWeekDays,
   isSameDay,
-  isWithinRange,
-  startOfCurrentWeek,
   startOfDay,
   toDate,
 } from '@/utils/date'
@@ -24,12 +22,14 @@ export function getDashboardStats(tasks) {
   const inProgress = tasks.filter((task) => task.status === 'in-progress').length
   const overdue = tasks.filter(isTaskOverdue).length
 
-  const weekStart = startOfCurrentWeek()
   const weekEnd = endOfCurrentWeek()
-  const dueThisWeek = tasks.filter((task) => isWithinRange(toDate(task.dueDate), weekStart, weekEnd))
-  const completedDueThisWeek = dueThisWeek.filter((task) => task.status === 'completed').length
+  const dueByEndOfWeek = tasks.filter((task) => {
+    const dueDate = toDate(task.dueDate)
+    return dueDate && dueDate.getTime() <= weekEnd.getTime()
+  })
+  const completedDueByEndOfWeek = dueByEndOfWeek.filter((task) => task.status === 'completed').length
   const weeklyCompletionRate =
-    dueThisWeek.length === 0 ? 0 : Math.round((completedDueThisWeek / dueThisWeek.length) * 100)
+    dueByEndOfWeek.length === 0 ? 0 : Math.round((completedDueByEndOfWeek / dueByEndOfWeek.length) * 100)
 
   return {
     total,
@@ -37,7 +37,7 @@ export function getDashboardStats(tasks) {
     inProgress,
     overdue,
     weeklyCompletionRate,
-    weeklyBasis: dueThisWeek.length,
+    weeklyBasis: dueByEndOfWeek.length,
   }
 }
 

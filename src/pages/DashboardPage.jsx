@@ -189,7 +189,7 @@ export function DashboardPage() {
               <div>
                 <p className="text-5xl font-bold">{stats.weeklyCompletionRate}%</p>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  {stats.weeklyBasis} task có hạn trong tuần này
+                  {stats.weeklyBasis} task đã đến hạn tới cuối tuần này
                 </p>
               </div>
               <Badge variant={stats.weeklyCompletionRate >= 70 ? 'success' : 'warning'}>

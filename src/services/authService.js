@@ -1,9 +1,11 @@
 import {
+  browserLocalPersistence,
   createUserWithEmailAndPassword,
   GoogleAuthProvider,
   signInWithEmailAndPassword,
   signInWithPopup,
   signOut,
+  setPersistence,
   updateProfile,
 } from 'firebase/auth'
 
@@ -20,7 +22,12 @@ function requireAuth() {
   return auth
 }
 
+function saveSessionLocally() {
+  return setPersistence(requireAuth(), browserLocalPersistence)
+}
+
 export async function registerWithEmail({ email, password, displayName }) {
+  await saveSessionLocally()
   const credential = await createUserWithEmailAndPassword(requireAuth(), email, password)
 
   if (displayName) {
@@ -31,11 +38,13 @@ export async function registerWithEmail({ email, password, displayName }) {
 }
 
 export async function loginWithEmail({ email, password }) {
+  await saveSessionLocally()
   const credential = await signInWithEmailAndPassword(requireAuth(), email, password)
   return credential.user
 }
 
 export async function loginWithGoogle() {
+  await saveSessionLocally()
   const credential = await signInWithPopup(requireAuth(), googleProvider)
   return credential.user
 }

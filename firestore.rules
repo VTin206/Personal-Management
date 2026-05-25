@@ -1,0 +1,54 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function ownsTask(data) {
+      return signedIn() && data.userId == request.auth.uid;
+    }
+
+    function isValidTask(data) {
+      return data.keys().hasOnly([
+        'title',
+        'description',
+        'status',
+        'priority',
+        'dueDate',
+        'createdAt',
+        'completedAt',
+        'userId'
+      ])
+      && data.keys().hasAll([
+        'title',
+        'description',
+        'status',
+        'priority',
+        'dueDate',
+        'createdAt',
+        'completedAt',
+        'userId'
+      ])
+      && data.title is string
+      && data.description is string
+      && data.status in ['todo', 'in-progress', 'completed']
+      && data.priority in ['low', 'medium', 'high']
+      && data.dueDate is string
+      && data.createdAt is timestamp
+      && (data.completedAt == null || data.completedAt is timestamp)
+      && data.userId is string;
+    }
+
+    match /tasks/{taskId} {
+      allow read: if ownsTask(resource.data);
+      allow create: if ownsTask(request.resource.data) && isValidTask(request.resource.data);
+      allow update: if ownsTask(resource.data)
+        && ownsTask(request.resource.data)
+        && request.resource.data.userId == resource.data.userId
+        && isValidTask(request.resource.data);
+      allow delete: if ownsTask(resource.data);
+    }
+  }
+}

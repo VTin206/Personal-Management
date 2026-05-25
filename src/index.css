@@ -1,0 +1,73 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 42 100% 97%;
+    --foreground: 252 18% 23%;
+    --card: 0 0% 100%;
+    --card-soft: 346 100% 98%;
+    --card-foreground: 252 18% 23%;
+    --primary: 339 80% 67%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 166 60% 88%;
+    --secondary-foreground: 168 35% 24%;
+    --muted: 220 38% 95%;
+    --muted-foreground: 248 12% 45%;
+    --accent: 44 97% 77%;
+    --accent-foreground: 36 35% 24%;
+    --destructive: 358 72% 64%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 252 24% 90%;
+    --input: 252 24% 88%;
+    --ring: 339 80% 67%;
+    --radius: 0.5rem;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    min-height: 100%;
+    background:
+      linear-gradient(135deg, #fff5f8 0%, #f3fff8 42%, #f5f0ff 100%),
+      hsl(var(--background));
+  }
+
+  body {
+    @apply min-h-screen bg-transparent font-sans text-foreground antialiased;
+    margin: 0;
+    letter-spacing: 0;
+  }
+
+  button,
+  input,
+  textarea,
+  select {
+    font: inherit;
+    letter-spacing: 0;
+  }
+
+  #root {
+    min-height: 100vh;
+  }
+}
+
+@layer utilities {
+  .pastel-grid {
+    background-image:
+      linear-gradient(rgba(121, 103, 152, 0.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(121, 103, 152, 0.06) 1px, transparent 1px);
+    background-size: 30px 30px;
+  }
+
+  html[data-grid='off'] .pastel-grid {
+    background-image: none;
+  }
+
+  .solid-ui .shadow-soft {
+    box-shadow: 0 14px 36px rgba(105, 93, 128, 0.1);
+  }
+}

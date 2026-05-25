@@ -10,10 +10,32 @@ import {
 export function isTaskOverdue(task) {
   if (task.status === 'completed') return false
 
-  const dueDate = toDate(task.dueDate)
+  return isDueDateOverdue(task.dueDate)
+}
+
+export function isDueDateOverdue(dueDateValue) {
+  const dueDate = toDate(dueDateValue)
   if (!dueDate) return false
 
   return dueDate.getTime() < startOfDay(new Date()).getTime()
+}
+
+export function canCompleteTask(task) {
+  return !isDueDateOverdue(task.dueDate)
+}
+
+export function canCompleteTaskWithUpdates(task, updates) {
+  const updatedTask = { ...task, ...updates }
+  return canCompleteTask(updatedTask)
+}
+
+export function isUpcomingTask(task) {
+  if (task.status === 'completed') return false
+
+  const dueDate = toDate(task.dueDate)
+  if (!dueDate) return false
+
+  return dueDate.getTime() >= startOfDay(new Date()).getTime()
 }
 
 export function getDashboardStats(tasks) {
@@ -68,8 +90,7 @@ export function getStatusChartData(tasks) {
 
 export function getUpcomingTasks(tasks) {
   return tasks
-    .filter((task) => task.status !== 'completed')
-    .filter((task) => toDate(task.dueDate))
+    .filter(isUpcomingTask)
     .sort((a, b) => toDate(a.dueDate).getTime() - toDate(b.dueDate).getTime())
     .slice(0, 5)
 }

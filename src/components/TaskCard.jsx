@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { formatDate } from '@/utils/date'
-import { isTaskOverdue } from '@/utils/taskStats'
+import { canCompleteTask, isTaskOverdue } from '@/utils/taskStats'
 import {
   getPriorityLabel,
   getStatusLabel,
@@ -25,9 +25,18 @@ import { cn } from '@/utils/cn'
 export function TaskCard({ task, onEdit, onUpdate, onDelete }) {
   const overdue = isTaskOverdue(task)
   const completed = task.status === 'completed'
+  const completionBlocked = !completed && !canCompleteTask(task)
 
   function handleToggleComplete() {
+    if (completionBlocked) return
+
     onUpdate(task.id, { status: completed ? 'in-progress' : 'completed' })
+  }
+
+  function handleStatusChange(value) {
+    if (value === 'completed' && completionBlocked) return
+
+    onUpdate(task.id, { status: value })
   }
 
   function handleDelete() {
@@ -63,9 +72,10 @@ export function TaskCard({ task, onEdit, onUpdate, onDelete }) {
                 type="button"
                 variant={completed ? 'secondary' : 'outline'}
                 size="icon"
-                title={completed ? 'Đánh dấu đang làm' : 'Đánh dấu hoàn thành'}
-                aria-label={completed ? 'Đánh dấu đang làm' : 'Đánh dấu hoàn thành'}
+                title={completionBlocked ? 'Task trễ hạn không thể hoàn thành' : completed ? 'Đánh dấu đang làm' : 'Đánh dấu hoàn thành'}
+                aria-label={completionBlocked ? 'Task trễ hạn không thể hoàn thành' : completed ? 'Đánh dấu đang làm' : 'Đánh dấu hoàn thành'}
                 onClick={handleToggleComplete}
+                disabled={completionBlocked}
               >
                 {completed ? <RotateCcw /> : <CheckCircle2 />}
               </Button>
@@ -99,13 +109,17 @@ export function TaskCard({ task, onEdit, onUpdate, onDelete }) {
               <Badge variant={overdue ? 'danger' : 'outline'}>Hạn: {formatDate(task.dueDate)}</Badge>
             </div>
 
-            <Select value={task.status} onValueChange={(value) => onUpdate(task.id, { status: value })}>
+            <Select value={task.status} onValueChange={handleStatusChange}>
               <SelectTrigger aria-label="Đổi trạng thái task">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 {TASK_STATUSES.map((status) => (
-                  <SelectItem key={status.value} value={status.value}>
+                  <SelectItem
+                    key={status.value}
+                    value={status.value}
+                    disabled={status.value === 'completed' && completionBlocked}
+                  >
                     {status.label}
                   </SelectItem>
                 ))}

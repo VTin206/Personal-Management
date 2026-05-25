@@ -31,7 +31,12 @@ import { useSettings } from '@/hooks/useSettings'
 import { useTasks } from '@/hooks/useTasks'
 import { formatDate } from '@/utils/date'
 import { getFirebaseErrorMessage } from '@/utils/firebaseErrors'
-import { getDashboardStats, getUpcomingTasks, isTaskOverdue } from '@/utils/taskStats'
+import {
+  canCompleteTaskWithUpdates,
+  getDashboardStats,
+  getUpcomingTasks,
+  isTaskOverdue,
+} from '@/utils/taskStats'
 import {
   getPriorityLabel,
   PRIORITY_BADGE_VARIANTS,
@@ -88,6 +93,11 @@ export function DashboardPage() {
 
     try {
       if (editingTask) {
+        if (payload.status === 'completed' && !canCompleteTaskWithUpdates(editingTask, payload)) {
+          setActionError('Task trễ hạn không thể đánh dấu là đã hoàn thành.')
+          return false
+        }
+
         await updateTask(editingTask.id, payload)
       } else {
         await createTask(payload)
@@ -108,6 +118,13 @@ export function DashboardPage() {
     setActionError('')
 
     try {
+      const task = tasks.find((item) => item.id === taskId)
+
+      if (payload.status === 'completed' && task && !canCompleteTaskWithUpdates(task, payload)) {
+        setActionError('Task trễ hạn không thể đánh dấu là đã hoàn thành.')
+        return
+      }
+
       await updateTask(taskId, payload)
     } catch (taskError) {
       setActionError(getFirebaseErrorMessage(taskError))

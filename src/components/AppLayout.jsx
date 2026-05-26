@@ -1,4 +1,4 @@
-import { NavLink, Outlet } from 'react-router-dom'
+import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import {
   BarChart3,
   LayoutDashboard,
@@ -43,8 +43,18 @@ function NavigationLink({ item, compact = false }) {
 }
 
 export function AppLayout() {
+  const location = useLocation()
   const { user, logout } = useAuth()
   const { settings } = useSettings()
+  const focusMode = location.pathname.startsWith('/focus/')
+
+  if (focusMode) {
+    return (
+      <div className="min-h-screen bg-slate-950">
+        <Outlet />
+      </div>
+    )
+  }
 
   return (
     <div

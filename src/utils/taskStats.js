@@ -26,11 +26,20 @@ export function canCompleteTask(task) {
 
 export function canCompleteTaskWithUpdates(task, updates) {
   const updatedTask = { ...task, ...updates }
+
+  if (task.status === 'completed' && updatedTask.status === 'completed') {
+    return true
+  }
+
   return canCompleteTask(updatedTask)
 }
 
+export function isActiveWorkTask(task) {
+  return task.status !== 'completed' && !isDueDateOverdue(task.dueDate)
+}
+
 export function isUpcomingTask(task) {
-  if (task.status === 'completed') return false
+  if (!isActiveWorkTask(task)) return false
 
   const dueDate = toDate(task.dueDate)
   if (!dueDate) return false
@@ -41,7 +50,7 @@ export function isUpcomingTask(task) {
 export function getDashboardStats(tasks) {
   const total = tasks.length
   const completed = tasks.filter((task) => task.status === 'completed').length
-  const inProgress = tasks.filter((task) => task.status === 'in-progress').length
+  const inProgress = tasks.filter((task) => task.status === 'in-progress' && isActiveWorkTask(task)).length
   const overdue = tasks.filter(isTaskOverdue).length
 
   const weekEnd = endOfCurrentWeek()

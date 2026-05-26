@@ -1,4 +1,4 @@
-import { CheckCircle2, Pencil, RotateCcw, Trash2 } from 'lucide-react'
+import { CheckCircle2, Pencil, RotateCcw, Timer, Trash2 } from 'lucide-react'
 import { motion } from 'framer-motion'
 
 import { Badge } from '@/components/ui/badge'
@@ -22,7 +22,7 @@ import {
 } from '@/utils/taskOptions'
 import { cn } from '@/utils/cn'
 
-export function TaskCard({ task, onEdit, onUpdate, onDelete }) {
+export function TaskCard({ task, onEdit, onUpdate, onDelete, onFocus }) {
   const overdue = isTaskOverdue(task)
   const completed = task.status === 'completed'
   const completionBlocked = !completed && !canCompleteTask(task)
@@ -68,6 +68,19 @@ export function TaskCard({ task, onEdit, onUpdate, onDelete }) {
             </div>
 
             <div className="flex shrink-0 items-center gap-2">
+              {onFocus ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  title="Mở chế độ tập trung"
+                  aria-label="Mở chế độ tập trung"
+                  onClick={() => onFocus(task)}
+                >
+                  <Timer />
+                  Tập trung
+                </Button>
+              ) : null}
               <Button
                 type="button"
                 variant={completed ? 'secondary' : 'outline'}

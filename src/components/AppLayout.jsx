@@ -2,6 +2,7 @@ import { NavLink, Outlet } from 'react-router-dom'
 import {
   BarChart3,
   LayoutDashboard,
+  ListChecks,
   LogOut,
   MoonStar,
   Settings,
@@ -15,6 +16,7 @@ import { cn } from '@/utils/cn'
 
 const navigationItems = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
+  { to: '/tasks', label: 'Công việc', icon: ListChecks },
   { to: '/weekly-report', label: 'Báo cáo tuần', icon: BarChart3 },
   { to: '/settings', label: 'Cài đặt', icon: Settings },
 ]
@@ -87,7 +89,7 @@ export function AppLayout() {
         <Outlet />
       </main>
 
-      <nav className="fixed inset-x-3 bottom-3 z-50 grid grid-cols-3 gap-2 rounded-lg border bg-card/95 p-2 shadow-soft backdrop-blur-sm md:hidden">
+      <nav className="fixed inset-x-3 bottom-3 z-50 grid grid-cols-4 gap-2 rounded-lg border bg-card/95 p-2 shadow-soft backdrop-blur-sm md:hidden">
         {navigationItems.map((item) => (
           <NavigationLink item={item} compact key={item.to} />
         ))}

@@ -1,4 +1,4 @@
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { BrowserRouter, Route, Routes } from 'react-router-dom'
 
 import { AppLayout } from '@/components/AppLayout'
 import { AuthRoute } from '@/components/AuthRoute'
@@ -9,9 +9,11 @@ import { SettingsProvider } from '@/contexts/SettingsProvider'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { FirebaseSetupPage } from '@/pages/FirebaseSetupPage'
 import { LoginPage } from '@/pages/LoginPage'
+import { FocusTaskPage } from '@/pages/FocusTaskPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 import { RegisterPage } from '@/pages/RegisterPage'
 import { SettingsPage } from '@/pages/SettingsPage'
+import { TasksPage } from '@/pages/TasksPage'
 import { WeeklyReportPage } from '@/pages/WeeklyReportPage'
 
 function App() {
@@ -32,7 +34,8 @@ function App() {
             <Route element={<ProtectedRoute />}>
               <Route element={<AppLayout />}>
                 <Route index element={<DashboardPage />} />
-                <Route path="/tasks" element={<Navigate to="/" replace />} />
+                <Route path="/tasks" element={<TasksPage />} />
+                <Route path="/focus/:taskId" element={<FocusTaskPage />} />
                 <Route path="/weekly-report" element={<WeeklyReportPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
               </Route>

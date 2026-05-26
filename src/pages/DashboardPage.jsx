@@ -35,6 +35,7 @@ import {
   canCompleteTaskWithUpdates,
   getDashboardStats,
   getUpcomingTasks,
+  isActiveWorkTask,
   isTaskOverdue,
 } from '@/utils/taskStats'
 import {
@@ -42,6 +43,29 @@ import {
   PRIORITY_BADGE_VARIANTS,
   TASK_STATUSES,
 } from '@/utils/taskOptions'
+
+const TASK_LIST_VIEWS = {
+  active: {
+    title: 'Danh sách task',
+    description: 'Task chưa hoàn thành và chưa quá hạn.',
+  },
+  all: {
+    title: 'Tất cả task',
+    description: 'Toàn bộ task trong lịch sử, gồm cả task đã hoàn thành và trễ hạn.',
+  },
+  completed: {
+    title: 'Task đã hoàn thành',
+    description: 'Những task đã được đánh dấu hoàn thành để phục vụ thống kê và báo cáo.',
+  },
+  'in-progress': {
+    title: 'Task đang làm',
+    description: 'Những task đang làm và vẫn còn trong hạn.',
+  },
+  overdue: {
+    title: 'Task trễ hạn',
+    description: 'Những task đã quá hạn và không còn nằm trong luồng làm việc.',
+  },
+}
 
 export function DashboardPage() {
   const { settings } = useSettings()
@@ -52,15 +76,25 @@ export function DashboardPage() {
   const [actionError, setActionError] = useState('')
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState(settings.defaultTaskFilter)
+  const [taskListView, setTaskListView] = useState('active')
 
   const stats = getDashboardStats(tasks)
   const upcomingTasks = getUpcomingTasks(tasks)
+  const selectedTaskListView = TASK_LIST_VIEWS[taskListView]
 
   const filteredTasks = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase()
+    const isFixedView = ['completed', 'in-progress', 'overdue'].includes(taskListView)
+    const baseTasks = tasks.filter((task) => {
+      if (taskListView === 'active') return isActiveWorkTask(task)
+      if (taskListView === 'completed') return task.status === 'completed'
+      if (taskListView === 'in-progress') return task.status === 'in-progress' && isActiveWorkTask(task)
+      if (taskListView === 'overdue') return isTaskOverdue(task)
+      return true
+    })
 
-    return tasks.filter((task) => {
-      const matchesStatus = statusFilter === 'all' || task.status === statusFilter
+    return baseTasks.filter((task) => {
+      const matchesStatus = isFixedView || statusFilter === 'all' || task.status === statusFilter
       const matchesSearch =
         !normalizedSearch ||
         task.title.toLowerCase().includes(normalizedSearch) ||
@@ -68,7 +102,12 @@ export function DashboardPage() {
 
       return matchesStatus && matchesSearch
     })
-  }, [search, statusFilter, tasks])
+  }, [search, statusFilter, taskListView, tasks])
+
+  function showTaskListView(nextView) {
+    setTaskListView(nextView)
+    setStatusFilter('all')
+  }
 
   function openNewTaskForm() {
     setEditingTask(null)
@@ -187,10 +226,38 @@ export function DashboardPage() {
       ) : null}
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard title="Tổng số task" value={stats.total} icon={ListTodo} tone="bg-sky text-sky-950" />
-        <StatCard title="Task đã hoàn thành" value={stats.completed} icon={CheckCircle2} tone="bg-mint text-emerald-900" />
-        <StatCard title="Task đang làm" value={stats.inProgress} icon={TimerReset} tone="bg-butter text-amber-950" />
-        <StatCard title="Task trễ hạn" value={stats.overdue} icon={AlertTriangle} tone="bg-peach text-rose-950" />
+        <StatCard
+          title="Tổng số task"
+          value={stats.total}
+          icon={ListTodo}
+          tone="bg-sky text-sky-950"
+          selected={taskListView === 'all'}
+          onClick={() => showTaskListView('all')}
+        />
+        <StatCard
+          title="Task đã hoàn thành"
+          value={stats.completed}
+          icon={CheckCircle2}
+          tone="bg-mint text-emerald-900"
+          selected={taskListView === 'completed'}
+          onClick={() => showTaskListView('completed')}
+        />
+        <StatCard
+          title="Task đang làm"
+          value={stats.inProgress}
+          icon={TimerReset}
+          tone="bg-butter text-amber-950"
+          selected={taskListView === 'in-progress'}
+          onClick={() => showTaskListView('in-progress')}
+        />
+        <StatCard
+          title="Task trễ hạn"
+          value={stats.overdue}
+          icon={AlertTriangle}
+          tone="bg-peach text-rose-950"
+          selected={taskListView === 'overdue'}
+          onClick={() => showTaskListView('overdue')}
+        />
       </section>
 
       <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_390px]">
@@ -254,9 +321,14 @@ export function DashboardPage() {
       <section className="grid gap-4">
         <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
           <div>
-            <h2 className="text-2xl font-bold">Danh sách task</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Tìm, lọc, sửa và cập nhật trạng thái task tại đây.</p>
+            <h2 className="text-2xl font-bold">{selectedTaskListView.title}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">{selectedTaskListView.description}</p>
           </div>
+          {taskListView !== 'active' ? (
+            <Button type="button" variant="outline" onClick={() => showTaskListView('active')}>
+              Xem task đang xử lý
+            </Button>
+          ) : null}
         </div>
 
         <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_220px]">
@@ -270,19 +342,21 @@ export function DashboardPage() {
             />
           </div>
 
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger aria-label="Lọc theo trạng thái">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tất cả trạng thái</SelectItem>
-              {TASK_STATUSES.map((status) => (
-                <SelectItem key={status.value} value={status.value}>
-                  {status.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {['active', 'all'].includes(taskListView) ? (
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger aria-label="Lọc theo trạng thái">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tất cả trạng thái</SelectItem>
+                {TASK_STATUSES.map((status) => (
+                  <SelectItem key={status.value} value={status.value}>
+                    {status.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : null}
         </div>
 
         <div className="grid gap-3">

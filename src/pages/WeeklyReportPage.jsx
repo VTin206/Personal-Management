@@ -1,6 +1,4 @@
 import {
-  Area,
-  AreaChart,
   Bar,
   BarChart,
   CartesianGrid,
@@ -140,51 +138,34 @@ export function WeeklyReportPage() {
               <CardContent className="pt-5">
                 <div className="h-[360px] w-full">
                   <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={weeklyData} margin={{ left: -18, right: 12, top: 8, bottom: 0 }}>
-                      <defs>
-                        <linearGradient id="createdGradient" x1="0" x2="0" y1="0" y2="1">
-                          <stop offset="5%" stopColor="#bfe8ff" stopOpacity={0.9} />
-                          <stop offset="95%" stopColor="#bfe8ff" stopOpacity={0.12} />
-                        </linearGradient>
-                        <linearGradient id="completedGradient" x1="0" x2="0" y1="0" y2="1">
-                          <stop offset="5%" stopColor="#c6f6dd" stopOpacity={0.95} />
-                          <stop offset="95%" stopColor="#c6f6dd" stopOpacity={0.16} />
-                        </linearGradient>
-                        <linearGradient id="dueGradient" x1="0" x2="0" y1="0" y2="1">
-                          <stop offset="5%" stopColor="#fff1a8" stopOpacity={0.95} />
-                          <stop offset="95%" stopColor="#fff1a8" stopOpacity={0.12} />
-                        </linearGradient>
-                      </defs>
+                    <BarChart data={weeklyData} margin={{ left: -18, right: 12, top: 8, bottom: 0 }} barGap={8}>
                       <CartesianGrid stroke="#efe7f3" strokeDasharray="4 6" vertical={false} />
                       <XAxis dataKey="day" tickLine={false} axisLine={false} tickMargin={10} />
                       <YAxis allowDecimals={false} tickLine={false} axisLine={false} />
-                      <Tooltip content={<PrettyTooltip />} cursor={{ stroke: '#f178a8', strokeWidth: 1 }} />
+                      <Tooltip content={<PrettyTooltip />} cursor={{ fill: 'rgba(255, 214, 231, 0.26)' }} />
                       <Legend iconType="circle" />
-                      <Area
-                        type="monotone"
+                      <Bar
                         dataKey="created"
                         name="Tạo mới"
-                        stroke="#6ec9f5"
-                        fill="url(#createdGradient)"
-                        strokeWidth={3}
+                        fill="#bfe8ff"
+                        radius={[8, 8, 0, 0]}
+                        barSize={22}
                       />
-                      <Area
-                        type="monotone"
+                      <Bar
                         dataKey="completed"
                         name="Hoàn thành"
-                        stroke="#62c994"
-                        fill="url(#completedGradient)"
-                        strokeWidth={3}
+                        fill="#c6f6dd"
+                        radius={[8, 8, 0, 0]}
+                        barSize={22}
                       />
-                      <Area
-                        type="monotone"
+                      <Bar
                         dataKey="due"
                         name="Đến hạn"
-                        stroke="#e7c94e"
-                        fill="url(#dueGradient)"
-                        strokeWidth={3}
+                        fill="#fff1a8"
+                        radius={[8, 8, 0, 0]}
+                        barSize={22}
                       />
-                    </AreaChart>
+                    </BarChart>
                   </ResponsiveContainer>
                 </div>
               </CardContent>

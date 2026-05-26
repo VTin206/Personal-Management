@@ -1,13 +1,17 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   ArrowLeft,
+  CalendarDays,
   CheckCircle2,
   Coffee,
+  Eye,
+  EyeOff,
   Gauge,
   Home,
   Maximize2,
+  Music,
   Pause,
   Play,
   RotateCcw,
@@ -19,6 +23,9 @@ import {
 } from 'lucide-react'
 
 import focusSkyBackground from '@/assets/focus-sky.jpg'
+import sessionSwitchSound from '@/assets/sounds/session-switch-taco-bell.mp3'
+import taskCompleteSound from '@/assets/sounds/task-complete-ding.mp3'
+import taskStartSound from '@/assets/sounds/task-start-boxing-bell.mp3'
 import { EmptyState } from '@/components/EmptyState'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -58,10 +65,20 @@ const FOCUS_MODES = {
   },
 }
 
+const DEFAULT_DURATIONS = { focus: 25, short: 5, long: 15 }
+
 function clampMinutes(value) {
   const numberValue = Number(value)
   if (!Number.isFinite(numberValue)) return 1
   return Math.min(120, Math.max(1, Math.round(numberValue)))
+}
+
+function createSecondsByMode(durations) {
+  return {
+    focus: durations.focus * 60,
+    short: durations.short * 60,
+    long: durations.long * 60,
+  }
 }
 
 function formatTimer(seconds) {
@@ -72,6 +89,125 @@ function formatTimer(seconds) {
 
 function getNextMode(mode) {
   return mode === 'focus' ? 'short' : 'focus'
+}
+
+const FOCUS_MUSIC_STORAGE_KEY = 'pastel-focus-music-url'
+const YOUTUBE_ID_PATTERN = /^[A-Za-z0-9_-]+$/
+const activeSounds = new Set()
+
+function sanitizeYouTubeId(value) {
+  if (!value || !YOUTUBE_ID_PATTERN.test(value)) return ''
+  return value
+}
+
+function isYouTubeHost(hostname) {
+  const normalizedHostname = hostname.toLowerCase().replace(/^www\./, '').replace(/^m\./, '')
+
+  return (
+    normalizedHostname === 'youtu.be' ||
+    normalizedHostname === 'youtube.com' ||
+    normalizedHostname.endsWith('.youtube.com') ||
+    normalizedHostname === 'youtube-nocookie.com' ||
+    normalizedHostname.endsWith('.youtube-nocookie.com')
+  )
+}
+
+function createYouTubeEmbedUrl(rawUrl) {
+  const trimmedUrl = rawUrl.trim()
+  if (!trimmedUrl) return ''
+
+  const urlWithProtocol = /^(https?:)?\/\//i.test(trimmedUrl) ? trimmedUrl : `https://${trimmedUrl}`
+  let url
+
+  try {
+    url = new URL(urlWithProtocol)
+  } catch {
+    return ''
+  }
+
+  if (!isYouTubeHost(url.hostname)) return ''
+
+  const normalizedHostname = url.hostname.toLowerCase().replace(/^www\./, '').replace(/^m\./, '')
+  const pathSegments = url.pathname.split('/').filter(Boolean)
+  const playlistId = sanitizeYouTubeId(url.searchParams.get('list'))
+  let videoId = ''
+
+  if (normalizedHostname === 'youtu.be') {
+    videoId = sanitizeYouTubeId(pathSegments[0])
+  } else if (pathSegments[0] === 'watch') {
+    videoId = sanitizeYouTubeId(url.searchParams.get('v'))
+  } else if (['embed', 'shorts', 'live', 'v'].includes(pathSegments[0])) {
+    videoId = sanitizeYouTubeId(pathSegments[1])
+  }
+
+  if (videoId) {
+    const embedUrl = new URL(`https://www.youtube.com/embed/${videoId}`)
+    embedUrl.searchParams.set('autoplay', '1')
+    embedUrl.searchParams.set('rel', '0')
+    embedUrl.searchParams.set('playsinline', '1')
+    if (playlistId) embedUrl.searchParams.set('list', playlistId)
+    return embedUrl.toString()
+  }
+
+  if (playlistId) {
+    const embedUrl = new URL('https://www.youtube.com/embed/videoseries')
+    embedUrl.searchParams.set('list', playlistId)
+    embedUrl.searchParams.set('autoplay', '1')
+    embedUrl.searchParams.set('rel', '0')
+    embedUrl.searchParams.set('playsinline', '1')
+    return embedUrl.toString()
+  }
+
+  return ''
+}
+
+function getStoredFocusMusicUrl() {
+  try {
+    return window.localStorage.getItem(FOCUS_MUSIC_STORAGE_KEY) ?? ''
+  } catch {
+    return ''
+  }
+}
+
+function storeFocusMusicUrl(url) {
+  try {
+    if (url) {
+      window.localStorage.setItem(FOCUS_MUSIC_STORAGE_KEY, url)
+    } else {
+      window.localStorage.removeItem(FOCUS_MUSIC_STORAGE_KEY)
+    }
+  } catch {
+    // Local storage can be blocked in private browsing contexts.
+  }
+}
+
+function playSound(src, volume = 0.5) {
+  try {
+    const audio = new Audio(src)
+    const cleanUp = () => activeSounds.delete(audio)
+
+    audio.volume = Math.min(1, Math.max(0, volume))
+    audio.addEventListener('ended', cleanUp, { once: true })
+    audio.addEventListener('error', cleanUp, { once: true })
+    activeSounds.add(audio)
+
+    const playPromise = audio.play()
+    if (playPromise?.catch) playPromise.catch(cleanUp)
+  } catch {
+    // Browser autoplay rules can reject sound; timer behavior should continue.
+  }
+}
+
+function playSessionSwitchSound() {
+  playSound(sessionSwitchSound, 0.5)
+}
+
+function playSessionStartSound() {
+  playSound(taskStartSound, 0.48)
+}
+
+function playTaskCompleteSound() {
+  playSound(taskCompleteSound, 0.58)
 }
 
 function FocusBackground() {
@@ -152,36 +288,184 @@ function FocusIconButton({ label, icon: Icon, onClick, asChild = false, children
   )
 }
 
+function FocusMusicPlayer() {
+  const [open, setOpen] = useState(false)
+  const [music, setMusic] = useState(() => {
+    const sourceUrl = getStoredFocusMusicUrl()
+
+    return {
+      embedUrl: createYouTubeEmbedUrl(sourceUrl),
+      error: '',
+      sourceUrl,
+    }
+  })
+  const hasMusic = Boolean(music.embedUrl)
+  const shouldRenderPanel = open || hasMusic
+
+  function updateSourceUrl(sourceUrl) {
+    setMusic((current) => ({ ...current, error: '', sourceUrl }))
+  }
+
+  function playMusic(event) {
+    event.preventDefault()
+
+    const embedUrl = createYouTubeEmbedUrl(music.sourceUrl)
+    if (!embedUrl) {
+      setMusic((current) => ({
+        ...current,
+        embedUrl: '',
+        error: 'Dán link YouTube video hoặc playlist hợp lệ.',
+      }))
+      return
+    }
+
+    storeFocusMusicUrl(music.sourceUrl)
+    setMusic((current) => ({ ...current, embedUrl, error: '' }))
+    setOpen(true)
+  }
+
+  function clearMusic() {
+    storeFocusMusicUrl('')
+    setMusic({ embedUrl: '', error: '', sourceUrl: '' })
+  }
+
+  return (
+    <div className="relative">
+      <Button
+        type="button"
+        variant="outline"
+        size="icon"
+        title="Nhạc nền"
+        aria-label="Nhạc nền"
+        className={cn(
+          'border-white/24 bg-black/24 text-white shadow-none hover:border-white hover:bg-white hover:text-slate-950',
+          open && 'border-white bg-white text-slate-950 hover:bg-white',
+          hasMusic && !open && 'border-mint/80 text-mint hover:text-slate-950',
+        )}
+        onClick={() => setOpen((current) => !current)}
+      >
+        <Music />
+      </Button>
+
+      <AnimatePresence>
+        {shouldRenderPanel ? (
+          <motion.div
+            className={cn(
+              'absolute right-0 top-12 z-30 w-[min(calc(100vw-2rem),24rem)] rounded-lg border border-white/18 bg-black/78 p-3 text-left shadow-[0_16px_48px_rgba(0,0,0,0.38)] backdrop-blur',
+              !open && 'pointer-events-none fixed -bottom-6 right-4 top-auto h-px w-px overflow-hidden border-0 p-0 opacity-0',
+            )}
+            initial={false}
+            animate={open ? { opacity: 1, y: 0, scale: 1 } : { opacity: 0, y: -6, scale: 0.98 }}
+            exit={{ opacity: 0, y: -6, scale: 0.98 }}
+            transition={{ duration: 0.16 }}
+          >
+            <form className="grid gap-3" onSubmit={playMusic}>
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm font-bold text-white">Nhạc nền</p>
+                <div className="flex items-center gap-2">
+                  {hasMusic ? (
+                    <>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        title="Ẩn tab nhạc"
+                        aria-label="Ẩn tab nhạc"
+                        className="size-8 border-white/20 bg-white/10 text-white shadow-none hover:bg-white hover:text-slate-950"
+                        onClick={() => setOpen(false)}
+                      >
+                        <EyeOff />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        title="Tắt nhạc nền"
+                        aria-label="Tắt nhạc nền"
+                        className="size-8 border-white/20 bg-white/10 text-white shadow-none hover:bg-white hover:text-slate-950"
+                        onClick={clearMusic}
+                      >
+                        <X />
+                      </Button>
+                    </>
+                  ) : null}
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  aria-label="Link YouTube"
+                  placeholder="https://youtube.com/watch?v=..."
+                  value={music.sourceUrl}
+                  className="h-10 border-white/18 bg-white text-slate-950 placeholder:text-slate-500"
+                  onChange={(event) => updateSourceUrl(event.target.value)}
+                />
+                <Button type="submit" className="h-10 px-3">
+                  <Play />
+                  Phát
+                </Button>
+              </div>
+              {music.error ? <p className="text-xs font-semibold text-rose-100">{music.error}</p> : null}
+            </form>
+
+            {hasMusic ? (
+              <div className="mt-3 overflow-hidden rounded-lg border border-white/12 bg-black">
+                <iframe
+                  key={music.embedUrl}
+                  title="Nhạc nền YouTube"
+                  src={music.embedUrl}
+                  className="h-24 w-full"
+                  allow="autoplay; encrypted-media; picture-in-picture"
+                  referrerPolicy="strict-origin-when-cross-origin"
+                />
+              </div>
+            ) : null}
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+    </div>
+  )
+}
+
 export function FocusTaskPage() {
   const { taskId } = useParams()
   const navigate = useNavigate()
   const { tasks, loading, error, updateTask } = useTasks()
   const task = useMemo(() => tasks.find((item) => item.id === taskId), [taskId, tasks])
   const [mode, setMode] = useState('focus')
-  const [durations, setDurations] = useState({ focus: 25, short: 5, long: 15 })
-  const [secondsLeft, setSecondsLeft] = useState(25 * 60)
+  const [durations, setDurations] = useState(DEFAULT_DURATIONS)
+  const [secondsByMode, setSecondsByMode] = useState(() => createSecondsByMode(DEFAULT_DURATIONS))
   const [running, setRunning] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
+  const [showTaskInfo, setShowTaskInfo] = useState(true)
   const [actionError, setActionError] = useState('')
+  const hasPlayedTaskStartSound = useRef(false)
+
+  useEffect(() => {
+    hasPlayedTaskStartSound.current = false
+  }, [taskId])
 
   useEffect(() => {
     if (!running) return undefined
 
     const intervalId = window.setInterval(() => {
-      setSecondsLeft((current) => {
-        if (current > 1) return current - 1
+      setSecondsByMode((current) => {
+        const currentSeconds = current[mode]
+        if (currentSeconds > 1) return { ...current, [mode]: currentSeconds - 1 }
 
         const nextMode = getNextMode(mode)
         setMode(nextMode)
-        return durations[nextMode] * 60
+        setRunning(false)
+        playSessionSwitchSound()
+        return { ...current, [mode]: 0 }
       })
     }, 1000)
 
     return () => window.clearInterval(intervalId)
-  }, [durations, mode, running])
+  }, [mode, running])
 
   const currentMode = FOCUS_MODES[mode]
   const currentDuration = durations[mode] * 60
+  const secondsLeft = secondsByMode[mode]
   const progress = Math.min(100, Math.max(0, Math.round(((currentDuration - secondsLeft) / currentDuration) * 100)))
   const completionBlocked = task ? !canCompleteTaskWithUpdates(task, { status: 'completed' }) : false
   const overdue = task ? isTaskOverdue(task) : false
@@ -190,20 +474,32 @@ export function FocusTaskPage() {
     const minutes = clampMinutes(value)
     setDurations((current) => ({ ...current, [key]: minutes }))
 
-    if (!running && mode === key) {
-      setSecondsLeft(minutes * 60)
-    }
+    if (running && mode === key) return
+
+    setSecondsByMode((current) => ({ ...current, [key]: minutes * 60 }))
   }
 
   function switchMode(nextMode) {
     setMode(nextMode)
     setRunning(false)
-    setSecondsLeft(durations[nextMode] * 60)
   }
 
   function resetTimer() {
     setRunning(false)
-    setSecondsLeft(durations[mode] * 60)
+    setSecondsByMode((current) => ({ ...current, [mode]: durations[mode] * 60 }))
+  }
+
+  function toggleRunning() {
+    setRunning((current) => {
+      if (!current && !hasPlayedTaskStartSound.current) {
+        playSessionStartSound()
+        hasPlayedTaskStartSound.current = true
+      }
+      if (!current && secondsByMode[mode] <= 0) {
+        setSecondsByMode((currentSecondsByMode) => ({ ...currentSecondsByMode, [mode]: durations[mode] * 60 }))
+      }
+      return !current
+    })
   }
 
   async function toggleFullscreen() {
@@ -227,6 +523,7 @@ export function FocusTaskPage() {
 
     try {
       await updateTask(task.id, { status: 'completed' })
+      playTaskCompleteSound()
       setRunning(false)
       navigate('/tasks', { replace: true })
     } catch (completeError) {
@@ -301,6 +598,7 @@ export function FocusTaskPage() {
 
           <div className="flex items-center gap-2">
             <FocusIconButton label="Dashboard" icon={Home} onClick={() => navigate('/')} />
+            <FocusMusicPlayer />
           </div>
         </header>
 
@@ -362,7 +660,7 @@ export function FocusTaskPage() {
                 'h-14 min-w-44 rounded-full border-0 bg-gradient-to-r px-8 text-base font-black text-slate-950 shadow-[0_18px_42px_rgba(255,154,118,0.28)] hover:scale-[1.02] hover:brightness-105',
                 running ? 'from-sky via-lavender to-mint' : 'from-blush via-butter to-sky',
               )}
-              onClick={() => setRunning((current) => !current)}
+              onClick={toggleRunning}
             >
               {running ? <Pause /> : <Play />}
               {running ? 'Tạm dừng' : 'Bắt đầu'}
@@ -380,22 +678,79 @@ export function FocusTaskPage() {
           </div>
         </main>
 
-        <section className="fixed inset-x-3 bottom-20 z-20 mx-auto max-w-md rounded-lg border border-white/14 bg-black/42 px-4 py-3 text-left shadow-[0_16px_48px_rgba(0,0,0,0.34)] lg:inset-x-auto lg:bottom-6 lg:left-6 lg:w-[360px]">
-          <div className="min-w-0">
-            <div className="mb-2 flex flex-wrap gap-2">
-              <Badge variant="secondary">Task đang làm</Badge>
-              <Badge variant={PRIORITY_BADGE_VARIANTS[task.priority]}>{getPriorityLabel(task.priority)}</Badge>
-              <Badge variant={STATUS_BADGE_VARIANTS[task.status]}>{getStatusLabel(task.status)}</Badge>
-              <Badge variant={overdue ? 'danger' : 'outline'} className={cn(!overdue && 'border-white/30 text-white')}>
-                Hạn: {formatDate(task.dueDate)}
-              </Badge>
-            </div>
-            <h1 className="truncate text-base font-bold leading-tight text-white sm:text-lg">{task.title}</h1>
-            {task.description ? (
-              <p className="mt-1 truncate text-sm text-white/68">{task.description}</p>
-            ) : null}
-          </div>
-        </section>
+        <AnimatePresence initial={false}>
+          {showTaskInfo ? (
+            <motion.section
+              className="fixed inset-x-3 bottom-20 z-20 mx-auto max-w-md overflow-hidden rounded-lg border border-white/16 bg-slate-950/58 text-left shadow-[0_18px_54px_rgba(0,0,0,0.38)] backdrop-blur-xl lg:inset-x-auto lg:bottom-6 lg:left-6 lg:w-[410px]"
+              initial={{ opacity: 0, y: 10, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 10, scale: 0.98 }}
+              transition={{ duration: 0.18 }}
+            >
+              <div className="h-1 bg-gradient-to-r from-mint via-butter to-blush" />
+              <div className="p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="inline-flex h-7 items-center gap-1.5 rounded-full bg-white px-3 text-xs font-black text-slate-950 shadow-[0_8px_24px_rgba(255,255,255,0.12)]">
+                      <Target className="size-3.5" />
+                      Task đang làm
+                    </span>
+                    <Badge variant={PRIORITY_BADGE_VARIANTS[task.priority]} className="h-7 rounded-full px-3 text-xs font-black">
+                      {getPriorityLabel(task.priority)}
+                    </Badge>
+                    <Badge variant={STATUS_BADGE_VARIANTS[task.status]} className="h-7 rounded-full px-3 text-xs font-black">
+                      {getStatusLabel(task.status)}
+                    </Badge>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    title="Ẩn thông tin task"
+                    aria-label="Ẩn thông tin task"
+                    className="size-8 border-white/20 bg-white/10 text-white shadow-none hover:bg-white hover:text-slate-950"
+                    onClick={() => setShowTaskInfo(false)}
+                  >
+                    <EyeOff />
+                  </Button>
+                </div>
+
+                <h1 className="mt-3 break-words text-xl font-black leading-snug text-white drop-shadow-[0_8px_24px_rgba(0,0,0,0.35)]">
+                  {task.title}
+                </h1>
+                {task.description ? <p className="mt-1 line-clamp-2 text-sm leading-5 text-white/72">{task.description}</p> : null}
+
+                <div
+                  className={cn(
+                    'mt-3 inline-flex h-8 items-center gap-2 rounded-full border px-3 text-xs font-bold',
+                    overdue ? 'border-peach/70 bg-peach/90 text-rose-950' : 'border-white/18 bg-white/10 text-white/82',
+                  )}
+                >
+                  <CalendarDays className="size-4" />
+                  Hạn {formatDate(task.dueDate)}
+                </div>
+              </div>
+            </motion.section>
+          ) : (
+            <motion.div
+              className="fixed inset-x-3 bottom-20 z-20 mx-auto flex max-w-md justify-start lg:inset-x-auto lg:bottom-6 lg:left-6 lg:w-[410px]"
+              initial={{ opacity: 0, y: 10, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 10, scale: 0.98 }}
+              transition={{ duration: 0.18 }}
+            >
+              <Button
+                type="button"
+                variant="outline"
+                className="h-11 rounded-full border-white/16 bg-slate-950/58 px-4 text-white shadow-[0_14px_34px_rgba(0,0,0,0.28)] backdrop-blur-xl hover:bg-white hover:text-slate-950"
+                onClick={() => setShowTaskInfo(true)}
+              >
+                <Eye />
+                Hiện task
+              </Button>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         <section className="fixed inset-x-3 bottom-3 z-20 mx-auto flex max-w-md items-center justify-end gap-3 lg:inset-x-auto lg:bottom-6 lg:right-6">
           <Button

@@ -17,7 +17,7 @@ import { cn } from '@/utils/cn'
 const navigationItems = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/tasks', label: 'Công việc', icon: ListChecks },
-  { to: '/weekly-report', label: 'Báo cáo tuần', icon: BarChart3 },
+  { to: '/weekly-report', label: 'Báo cáo tiến độ', icon: BarChart3 },
   { to: '/settings', label: 'Cài đặt', icon: Settings },
 ]
 

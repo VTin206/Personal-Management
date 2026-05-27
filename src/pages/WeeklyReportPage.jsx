@@ -223,15 +223,17 @@ function QuadrantLegend() {
 function CalendarRangeBar({ task, day, onOpen }) {
   const style = getCalendarStyle(task)
   const showLabel = shouldShowRangeLabel(task, day)
+  const startsInCell = isRangeStartInCell(task, day)
+  const endsInCell = isRangeEndInCell(task, day)
 
   return (
     <button
       type="button"
       className={cn(
-        'h-5 min-w-0 border-y px-1.5 text-left text-[10px] font-black leading-5 transition-colors',
+        'relative z-10 h-5 min-w-0 border-y px-2 text-left text-[10px] font-black leading-5 transition-colors',
         style.range,
-        isRangeStartInCell(task, day) ? 'rounded-l-md border-l' : 'border-l-0 pl-0.5',
-        isRangeEndInCell(task, day) ? 'rounded-r-md border-r' : 'border-r-0 pr-0.5',
+        startsInCell ? 'ml-0 rounded-l-md border-l' : '-ml-2 rounded-l-none border-l-0 pl-2',
+        endsInCell ? 'mr-0 rounded-r-md border-r' : '-mr-2 rounded-r-none border-r-0 pr-2',
       )}
       title={`${task.title} · ${formatDate(getTaskRange(task).start)} - ${formatDate(getTaskRange(task).end)}`}
       onClick={(event) => {
@@ -286,6 +288,7 @@ function CalendarHoverCard({ tasks, alignRight, onOpen }) {
 }
 
 function CalendarDayCell({
+  cellIndex,
   day,
   dayTasks,
   dueCount,
@@ -298,9 +301,11 @@ function CalendarDayCell({
   return (
     <div
       className={cn(
-        'group/calendar-day relative min-h-[92px] rounded-lg border bg-card p-2 text-left transition-colors hover:border-primary sm:min-h-[124px]',
-        !isCurrentMonth && 'bg-muted/40 text-muted-foreground',
-        selected && 'border-primary ring-2 ring-primary/25',
+        'group/calendar-day relative min-h-[92px] border-b border-r bg-card p-2 text-left transition-colors hover:bg-card-soft/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary sm:min-h-[124px]',
+        cellIndex % 7 === 6 && 'border-r-0',
+        cellIndex >= 35 && 'border-b-0',
+        !isCurrentMonth && 'bg-muted/30 text-muted-foreground',
+        selected && 'z-20 bg-primary/5 ring-2 ring-inset ring-primary/35',
       )}
       onClick={() => onSelect(startOfDay(day))}
       onKeyDown={(event) => {
@@ -516,32 +521,37 @@ export function WeeklyReportPage() {
                 </div>
               </CardHeader>
               <CardContent className="pt-5">
-                <div className="grid grid-cols-7 gap-2 text-center text-xs font-bold text-muted-foreground">
-                  {WEEKDAY_LABELS.map((label) => (
-                    <span key={label}>{label}</span>
-                  ))}
-                </div>
-                <div className="mt-2 grid grid-cols-7 gap-2">
-                  {calendarDays.map((day, index) => {
-                    const dayTasks = monthTasks.filter((task) => taskCoversDay(task, day))
-                    const dueCount = dayTasks.filter((task) => isSameDay(toDate(task.dueDate), day)).length
-                    const isCurrentMonth = day.getMonth() === monthDate.getMonth()
-                    const selected = isSameDay(day, selectedDate)
+                <div className="mt-2 rounded-lg border bg-card">
+                  <div className="grid grid-cols-7 rounded-t-lg border-b bg-card-soft/70 text-center text-xs font-bold text-muted-foreground">
+                    {WEEKDAY_LABELS.map((label, index) => (
+                      <span className={cn('border-r px-1 py-2', index === 6 && 'border-r-0')} key={label}>
+                        {label}
+                      </span>
+                    ))}
+                  </div>
+                  <div className="grid grid-cols-7">
+                    {calendarDays.map((day, index) => {
+                      const dayTasks = monthTasks.filter((task) => taskCoversDay(task, day))
+                      const dueCount = dayTasks.filter((task) => isSameDay(toDate(task.dueDate), day)).length
+                      const isCurrentMonth = day.getMonth() === monthDate.getMonth()
+                      const selected = isSameDay(day, selectedDate)
 
-                    return (
-                      <CalendarDayCell
-                        day={day}
-                        dayTasks={dayTasks}
-                        dueCount={dueCount}
-                        isCurrentMonth={isCurrentMonth}
-                        key={day.toISOString()}
-                        selected={selected}
-                        alignTooltipRight={index % 7 >= 4}
-                        onSelect={setSelectedDate}
-                        onOpenTask={openTask}
-                      />
-                    )
-                  })}
+                      return (
+                        <CalendarDayCell
+                          cellIndex={index}
+                          day={day}
+                          dayTasks={dayTasks}
+                          dueCount={dueCount}
+                          isCurrentMonth={isCurrentMonth}
+                          key={day.toISOString()}
+                          selected={selected}
+                          alignTooltipRight={index % 7 >= 4}
+                          onSelect={setSelectedDate}
+                          onOpenTask={openTask}
+                        />
+                      )
+                    })}
+                  </div>
                 </div>
               </CardContent>
             </Card>

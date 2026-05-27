@@ -298,6 +298,11 @@ function getNextMode(mode) {
   return mode === 'focus' ? 'short' : 'focus'
 }
 
+function getTimerAnchorSecondsLeft(anchor, now = Date.now()) {
+  const elapsedSeconds = Math.max(0, Math.floor((now - anchor.startedAt) / 1000))
+  return Math.max(0, anchor.secondsAtStart - elapsedSeconds)
+}
+
 const FOCUS_MUSIC_STORAGE_KEY = 'pastel-focus-music-url'
 const YOUTUBE_ID_PATTERN = /^[A-Za-z0-9_-]+$/
 const activeSounds = new Set()
@@ -697,29 +702,50 @@ export function FocusTaskPage() {
   const [selectedThemeKey, setSelectedThemeKey] = useState(() => getStoredFocusThemeKey())
   const [actionError, setActionError] = useState('')
   const hasPlayedTaskStartSound = useRef(false)
+  const timerAnchorRef = useRef(null)
 
   useEffect(() => {
     hasPlayedTaskStartSound.current = false
   }, [taskId])
 
   useEffect(() => {
-    if (!running) return undefined
+    if (!running) {
+      timerAnchorRef.current = null
+      return undefined
+    }
 
-    const intervalId = window.setInterval(() => {
+    function syncTimerWithClock() {
+      const anchor = timerAnchorRef.current
+      if (!anchor) return
+
+      const secondsLeft = getTimerAnchorSecondsLeft(anchor)
+
       setSecondsByMode((current) => {
-        const currentSeconds = current[mode]
-        if (currentSeconds > 1) return { ...current, [mode]: currentSeconds - 1 }
+        if (current[anchor.mode] === secondsLeft) return current
+        return { ...current, [anchor.mode]: secondsLeft }
+      })
 
-        const nextMode = getNextMode(mode)
+      if (secondsLeft <= 0) {
+        const nextMode = getNextMode(anchor.mode)
+        timerAnchorRef.current = null
         setMode(nextMode)
         setRunning(false)
         playSessionSwitchSound()
-        return { ...current, [mode]: 0 }
-      })
-    }, 1000)
+      }
+    }
 
-    return () => window.clearInterval(intervalId)
-  }, [mode, running])
+    syncTimerWithClock()
+
+    const intervalId = window.setInterval(syncTimerWithClock, 500)
+    window.addEventListener('focus', syncTimerWithClock)
+    document.addEventListener('visibilitychange', syncTimerWithClock)
+
+    return () => {
+      window.clearInterval(intervalId)
+      window.removeEventListener('focus', syncTimerWithClock)
+      document.removeEventListener('visibilitychange', syncTimerWithClock)
+    }
+  }, [running])
 
   const currentMode = FOCUS_MODES[mode]
   const selectedTheme = FOCUS_THEME_MAP[selectedThemeKey] ?? FOCUS_THEME_MAP[DEFAULT_FOCUS_THEME_KEY]
@@ -739,11 +765,13 @@ export function FocusTaskPage() {
   }
 
   function switchMode(nextMode) {
+    timerAnchorRef.current = null
     setMode(nextMode)
     setRunning(false)
   }
 
   function resetTimer() {
+    timerAnchorRef.current = null
     setRunning(false)
     setSecondsByMode((current) => ({ ...current, [mode]: durations[mode] * 60 }))
   }
@@ -754,16 +782,34 @@ export function FocusTaskPage() {
   }
 
   function toggleRunning() {
-    setRunning((current) => {
-      if (!current && !hasPlayedTaskStartSound.current) {
-        playSessionStartSound()
-        hasPlayedTaskStartSound.current = true
+    if (running) {
+      const anchor = timerAnchorRef.current
+      if (anchor) {
+        const secondsLeft = getTimerAnchorSecondsLeft(anchor)
+        setSecondsByMode((current) => ({ ...current, [anchor.mode]: secondsLeft }))
       }
-      if (!current && secondsByMode[mode] <= 0) {
-        setSecondsByMode((currentSecondsByMode) => ({ ...currentSecondsByMode, [mode]: durations[mode] * 60 }))
-      }
-      return !current
-    })
+      timerAnchorRef.current = null
+      setRunning(false)
+      return
+    }
+
+    const secondsAtStart = secondsByMode[mode] <= 0 ? durations[mode] * 60 : secondsByMode[mode]
+
+    if (!hasPlayedTaskStartSound.current) {
+      playSessionStartSound()
+      hasPlayedTaskStartSound.current = true
+    }
+
+    if (secondsByMode[mode] <= 0) {
+      setSecondsByMode((currentSecondsByMode) => ({ ...currentSecondsByMode, [mode]: secondsAtStart }))
+    }
+
+    timerAnchorRef.current = {
+      mode,
+      secondsAtStart,
+      startedAt: Date.now(),
+    }
+    setRunning(true)
   }
 
   async function toggleFullscreen() {
@@ -788,6 +834,7 @@ export function FocusTaskPage() {
     try {
       await updateTask(task.id, { status: 'completed' })
       playTaskCompleteSound()
+      timerAnchorRef.current = null
       setRunning(false)
       navigate('/tasks', { replace: true })
     } catch (completeError) {

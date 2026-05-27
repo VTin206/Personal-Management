@@ -441,10 +441,11 @@ function FocusBackground({ theme }) {
         src={theme.image}
         alt=""
         aria-hidden="true"
-        className={cn('pointer-events-none absolute inset-0 size-full object-cover', theme.imageClassName)}
+        decoding="async"
+        className={cn('pointer-events-none fixed inset-0 h-dvh w-dvw object-cover', theme.imageClassName)}
       />
-      <div className={cn('absolute inset-0', theme.overlayClassName)} />
-      <div className={cn('absolute inset-0', theme.glowClassName)} />
+      <div className={cn('fixed inset-0', theme.overlayClassName)} />
+      <div className={cn('fixed inset-0', theme.glowClassName)} />
     </>
   )
 }
@@ -834,10 +835,10 @@ export function FocusTaskPage() {
   }
 
   return (
-    <section className={cn('relative min-h-screen overflow-hidden text-white', selectedTheme.pageClassName)}>
+    <section className={cn('relative min-h-screen min-h-dvh overflow-hidden text-white', selectedTheme.pageClassName)}>
       <FocusBackground theme={selectedTheme} />
 
-      <div className="relative z-10 flex min-h-screen flex-col px-4 py-4 sm:px-6 lg:px-8">
+      <div className="relative z-10 flex min-h-screen min-h-dvh flex-col px-4 py-4 sm:px-6 lg:px-8">
         <header className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3">
             <Button

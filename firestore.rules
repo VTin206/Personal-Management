@@ -16,6 +16,7 @@ service cloud.firestore {
         'description',
         'status',
         'priority',
+        'startDate',
         'dueDate',
         'createdAt',
         'completedAt',
@@ -35,10 +36,41 @@ service cloud.firestore {
       && data.description is string
       && data.status in ['todo', 'in-progress', 'completed']
       && data.priority in ['low', 'medium', 'high']
+      && (!data.keys().hasAny(['startDate']) || data.startDate is string)
       && data.dueDate is string
       && data.createdAt is timestamp
       && (data.completedAt == null || data.completedAt is timestamp)
       && data.userId is string;
+    }
+
+    function ownsUserStats(userId, data) {
+      return signedIn()
+        && userId == request.auth.uid
+        && data.userId == request.auth.uid;
+    }
+
+    function isValidUserStats(data) {
+      return data.keys().hasOnly([
+        'userId',
+        'currentStreak',
+        'longestStreak',
+        'lastLoginDate',
+        'updatedAt'
+      ])
+      && data.keys().hasAll([
+        'userId',
+        'currentStreak',
+        'longestStreak',
+        'lastLoginDate',
+        'updatedAt'
+      ])
+      && data.userId is string
+      && data.currentStreak is int
+      && data.currentStreak >= 1
+      && data.longestStreak is int
+      && data.longestStreak >= data.currentStreak
+      && data.lastLoginDate is string
+      && data.updatedAt is timestamp;
     }
 
     match /tasks/{taskId} {
@@ -49,6 +81,12 @@ service cloud.firestore {
         && request.resource.data.userId == resource.data.userId
         && isValidTask(request.resource.data);
       allow delete: if ownsTask(resource.data);
+    }
+
+    match /userStats/{userId} {
+      allow read: if signedIn() && userId == request.auth.uid;
+      allow create, update: if ownsUserStats(userId, request.resource.data)
+        && isValidUserStats(request.resource.data);
     }
   }
 }

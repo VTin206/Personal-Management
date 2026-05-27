@@ -75,9 +75,8 @@ export function getDashboardStats(tasks) {
 export function getWeeklyChartData(tasks) {
   return getCurrentWeekDays().map((day) => ({
     day: formatDate(day, { short: true }),
-    created: tasks.filter((task) => isSameDay(task.createdAt, day)).length,
     completed: tasks.filter((task) => isSameDay(task.completedAt, day)).length,
-    due: tasks.filter((task) => isSameDay(toDate(task.dueDate), day)).length,
+    overdue: tasks.filter((task) => isTaskOverdue(task) && isSameDay(toDate(task.dueDate), day)).length,
   }))
 }
 

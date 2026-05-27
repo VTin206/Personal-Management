@@ -13,27 +13,33 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-import { addDays, getInputDateValue } from '@/utils/date'
+import { addDays, getInputDateValue, toDate } from '@/utils/date'
 import { TASK_PRIORITIES, TASK_STATUSES } from '@/utils/taskOptions'
 
 function createDefaultTask() {
+  const today = new Date()
+
   return {
     title: '',
     description: '',
     status: 'todo',
     priority: 'medium',
-    dueDate: getInputDateValue(addDays(new Date(), 1)),
+    startDate: getInputDateValue(today),
+    dueDate: getInputDateValue(addDays(today, 1)),
   }
 }
 
 function createFormState(initialTask) {
   if (!initialTask) return createDefaultTask()
 
+  const fallbackStartDate = toDate(initialTask.createdAt) ?? toDate(initialTask.dueDate) ?? new Date()
+
   return {
     title: initialTask.title ?? '',
     description: initialTask.description ?? '',
     status: initialTask.status ?? 'todo',
     priority: initialTask.priority ?? 'medium',
+    startDate: initialTask.startDate ?? getInputDateValue(fallbackStartDate),
     dueDate: initialTask.dueDate ?? getInputDateValue(addDays(new Date(), 1)),
   }
 }
@@ -52,6 +58,19 @@ export function TaskForm({ initialTask, onSubmit, onCancel, submitting = false }
 
     if (!form.title.trim()) {
       setError('Tiêu đề không được bỏ trống.')
+      return
+    }
+
+    const startDate = toDate(form.startDate)
+    const dueDate = toDate(form.dueDate)
+
+    if (!startDate || !dueDate) {
+      setError('Ngày bắt đầu và ngày hạn không hợp lệ.')
+      return
+    }
+
+    if (startDate.getTime() > dueDate.getTime()) {
+      setError('Ngày bắt đầu không được sau ngày hạn.')
       return
     }
 
@@ -95,7 +114,7 @@ export function TaskForm({ initialTask, onSubmit, onCancel, submitting = false }
             />
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div className="grid gap-2">
               <Label htmlFor="task-status">Trạng thái</Label>
               <Select value={form.status} onValueChange={(value) => updateField('status', value)}>
@@ -126,6 +145,21 @@ export function TaskForm({ initialTask, onSubmit, onCancel, submitting = false }
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="task-start-date">Ngày bắt đầu</Label>
+              <div className="relative">
+                <CalendarDays className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  id="task-start-date"
+                  type="date"
+                  className="pl-9"
+                  value={form.startDate}
+                  onChange={(event) => updateField('startDate', event.target.value)}
+                  required
+                />
+              </div>
             </div>
 
             <div className="grid gap-2">

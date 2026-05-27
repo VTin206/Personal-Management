@@ -1,6 +1,7 @@
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import {
   BarChart3,
+  Flame,
   LayoutDashboard,
   ListChecks,
   LogOut,
@@ -17,7 +18,7 @@ import { cn } from '@/utils/cn'
 const navigationItems = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/tasks', label: 'Công việc', icon: ListChecks },
-  { to: '/weekly-report', label: 'Báo cáo tuần', icon: BarChart3 },
+  { to: '/weekly-report', label: 'Báo cáo tiến độ', icon: BarChart3 },
   { to: '/settings', label: 'Cài đặt', icon: Settings },
 ]
 
@@ -44,7 +45,7 @@ function NavigationLink({ item, compact = false }) {
 
 export function AppLayout() {
   const location = useLocation()
-  const { user, logout } = useAuth()
+  const { user, logout, streak } = useAuth()
   const { settings } = useSettings()
   const focusMode = location.pathname.startsWith('/focus/')
 
@@ -76,9 +77,15 @@ export function AppLayout() {
             </div>
             <div className="min-w-0">
               <p className="truncate text-base font-bold">Pastel Tasks</p>
-              <p className="truncate text-xs text-muted-foreground">
-                {user?.displayName || user?.email}
-              </p>
+              <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                <span className="truncate">{user?.displayName || user?.email}</span>
+                {streak?.currentStreak ? (
+                  <span className="inline-flex shrink-0 items-center gap-1 rounded-md bg-butter px-1.5 py-0.5 font-bold text-amber-950">
+                    <Flame className="size-3" />
+                    {streak.currentStreak} ngày
+                  </span>
+                ) : null}
+              </div>
             </div>
           </div>
 

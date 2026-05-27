@@ -9,6 +9,7 @@ import {
   registerWithEmail,
   updateUserProfile as updateUserProfileService,
 } from '@/services/authService'
+import { recordLoginStreak } from '@/services/streakService'
 import { AuthContext } from './auth-context'
 
 function serializeUser(user) {
@@ -24,6 +25,7 @@ function serializeUser(user) {
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
+  const [streak, setStreak] = useState(null)
   const [loading, setLoading] = useState(isFirebaseConfigured)
 
   useEffect(() => {
@@ -31,12 +33,30 @@ export function AuthProvider({ children }) {
       return undefined
     }
 
+    let active = true
+
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(serializeUser(currentUser))
       setLoading(false)
+
+      if (!currentUser) {
+        setStreak(null)
+        return
+      }
+
+      recordLoginStreak(currentUser.uid)
+        .then((nextStreak) => {
+          if (active) setStreak(nextStreak)
+        })
+        .catch(() => {
+          if (active) setStreak(null)
+        })
     })
 
-    return unsubscribe
+    return () => {
+      active = false
+      unsubscribe()
+    }
   }, [])
 
   const updateUserProfile = useCallback(async (payload) => {
@@ -48,6 +68,7 @@ export function AuthProvider({ children }) {
   const value = useMemo(
     () => ({
       user,
+      streak,
       loading,
       isAuthenticated: Boolean(user),
       login: loginWithEmail,
@@ -56,7 +77,7 @@ export function AuthProvider({ children }) {
       updateUserProfile,
       logout,
     }),
-    [loading, updateUserProfile, user],
+    [loading, streak, updateUserProfile, user],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

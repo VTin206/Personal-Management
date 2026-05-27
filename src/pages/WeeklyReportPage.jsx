@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Bar,
   BarChart,
@@ -41,6 +42,10 @@ import {
   isTaskOverdue,
 } from '@/utils/taskStats'
 import {
+  EISENHOWER_QUADRANTS,
+  getEisenhowerQuadrantKey,
+} from '@/utils/eisenhower'
+import {
   getPriorityLabel,
   getStatusLabel,
   PRIORITY_BADGE_VARIANTS,
@@ -48,6 +53,24 @@ import {
 } from '@/utils/taskOptions'
 
 const WEEKDAY_LABELS = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN']
+const QUADRANT_CALENDAR_STYLES = {
+  do: {
+    range: 'border-rose-200 bg-peach text-rose-950 hover:bg-peach/90',
+    dot: 'bg-peach',
+  },
+  schedule: {
+    range: 'border-violet-200 bg-lavender text-violet-950 hover:bg-lavender/90',
+    dot: 'bg-lavender',
+  },
+  delegate: {
+    range: 'border-amber-200 bg-butter text-amber-950 hover:bg-butter/90',
+    dot: 'bg-butter',
+  },
+  reduce: {
+    range: 'border-sky-200 bg-sky text-sky-950 hover:bg-sky/90',
+    dot: 'bg-sky',
+  },
+}
 
 function ReportMetric({ title, value, icon: Icon, tone }) {
   return (
@@ -165,30 +188,166 @@ function sortByRange(tasks) {
   })
 }
 
-function CalendarTaskChip({ task }) {
+function getCalendarStyle(task) {
+  const quadrantKey = getEisenhowerQuadrantKey(task)
+  return QUADRANT_CALENDAR_STYLES[quadrantKey] ?? QUADRANT_CALENDAR_STYLES.reduce
+}
+
+function isRangeStartInCell(task, day) {
+  const range = getTaskRange(task)
+  return isSameDay(range.start, day) || day.getDay() === 1
+}
+
+function isRangeEndInCell(task, day) {
+  const range = getTaskRange(task)
+  return isSameDay(range.end, day) || day.getDay() === 0
+}
+
+function shouldShowRangeLabel(task, day) {
+  return isRangeStartInCell(task, day)
+}
+
+function QuadrantLegend() {
   return (
-    <span
-      className={cn(
-        'block truncate rounded-md px-1.5 py-0.5 text-[10px] font-bold leading-4',
-        task.status === 'completed' && 'bg-mint text-emerald-950',
-        task.status === 'in-progress' && 'bg-butter text-amber-950',
-        task.status === 'todo' && 'bg-sky text-sky-950',
-        isTaskOverdue(task) && 'bg-peach text-rose-950',
-      )}
-    >
-      {task.title}
-    </span>
+    <div className="flex flex-wrap gap-2 text-xs font-semibold text-muted-foreground">
+      {EISENHOWER_QUADRANTS.map((quadrant) => (
+        <span className="inline-flex items-center gap-1.5" key={quadrant.key}>
+          <span className={cn('size-2.5 rounded-full', QUADRANT_CALENDAR_STYLES[quadrant.key].dot)} />
+          {quadrant.title}
+        </span>
+      ))}
+    </div>
   )
 }
 
-function TaskTimelineItem({ task }) {
+function CalendarRangeBar({ task, day, onOpen }) {
+  const style = getCalendarStyle(task)
+  const showLabel = shouldShowRangeLabel(task, day)
+
+  return (
+    <button
+      type="button"
+      className={cn(
+        'h-5 min-w-0 border-y px-1.5 text-left text-[10px] font-black leading-5 transition-colors',
+        style.range,
+        isRangeStartInCell(task, day) ? 'rounded-l-md border-l' : 'border-l-0 pl-0.5',
+        isRangeEndInCell(task, day) ? 'rounded-r-md border-r' : 'border-r-0 pr-0.5',
+      )}
+      title={`${task.title} · ${formatDate(getTaskRange(task).start)} - ${formatDate(getTaskRange(task).end)}`}
+      onClick={(event) => {
+        event.stopPropagation()
+        onOpen(task)
+      }}
+    >
+      <span className={cn('block truncate', !showLabel && 'sr-only')}>{task.title}</span>
+    </button>
+  )
+}
+
+function CalendarHoverCard({ tasks, alignRight, onOpen }) {
+  if (tasks.length === 0) return null
+
+  return (
+    <div
+      className={cn(
+        'pointer-events-auto absolute top-full z-40 mt-2 hidden w-72 rounded-lg border bg-card p-3 text-left shadow-soft group-hover/calendar-day:block',
+        alignRight ? 'right-0' : 'left-0',
+      )}
+    >
+      <p className="mb-2 text-xs font-bold uppercase text-muted-foreground">Task trong ngày</p>
+      <div className="grid gap-1.5">
+        {tasks.map((task) => {
+          const range = getTaskRange(task)
+          const style = getCalendarStyle(task)
+
+          return (
+            <button
+              type="button"
+              className="rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-card-soft"
+              key={task.id}
+              onClick={(event) => {
+                event.stopPropagation()
+                onOpen(task)
+              }}
+            >
+              <span className="flex items-center gap-2">
+                <span className={cn('size-2.5 shrink-0 rounded-full', style.dot)} />
+                <span className="min-w-0 truncate font-bold">{task.title}</span>
+              </span>
+              <span className="mt-0.5 block text-xs text-muted-foreground">
+                {formatDate(range.start)} - {formatDate(range.end)}
+              </span>
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function CalendarDayCell({
+  day,
+  dayTasks,
+  dueCount,
+  isCurrentMonth,
+  selected,
+  alignTooltipRight,
+  onSelect,
+  onOpenTask,
+}) {
+  return (
+    <div
+      className={cn(
+        'group/calendar-day relative min-h-[92px] rounded-lg border bg-card p-2 text-left transition-colors hover:border-primary sm:min-h-[124px]',
+        !isCurrentMonth && 'bg-muted/40 text-muted-foreground',
+        selected && 'border-primary ring-2 ring-primary/25',
+      )}
+      onClick={() => onSelect(startOfDay(day))}
+      onKeyDown={(event) => {
+        if (!['Enter', ' '].includes(event.key)) return
+        event.preventDefault()
+        onSelect(startOfDay(day))
+      }}
+      role="button"
+      tabIndex={0}
+    >
+      <div className="flex items-center justify-between gap-1">
+        <span className="text-sm font-bold">{day.getDate()}</span>
+        {dueCount > 0 ? (
+          <span className="rounded-md bg-card-soft px-1.5 py-0.5 text-[10px] font-black text-foreground">
+            {dueCount}
+          </span>
+        ) : null}
+      </div>
+      <div className="mt-2 grid gap-1">
+        {dayTasks.slice(0, 4).map((task) => (
+          <CalendarRangeBar task={task} day={day} key={task.id} onOpen={onOpenTask} />
+        ))}
+        {dayTasks.length > 4 ? (
+          <span className="text-[10px] font-bold text-muted-foreground">+{dayTasks.length - 4}</span>
+        ) : null}
+      </div>
+      <CalendarHoverCard tasks={dayTasks} alignRight={alignTooltipRight} onOpen={onOpenTask} />
+    </div>
+  )
+}
+
+function TaskTimelineItem({ task, onOpen }) {
   const range = getTaskRange(task)
+  const style = getCalendarStyle(task)
 
   return (
     <li className="rounded-lg border bg-card-soft p-3">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <button
+        type="button"
+        className="flex w-full flex-col gap-3 text-left sm:flex-row sm:items-start sm:justify-between"
+        onClick={() => onOpen(task)}
+      >
         <div className="min-w-0">
-          <p className="break-words text-sm font-bold">{task.title}</p>
+          <p className="flex min-w-0 items-center gap-2 break-words text-sm font-bold">
+            <span className={cn('size-2.5 shrink-0 rounded-full', style.dot)} />
+            {task.title}
+          </p>
           <p className="mt-1 text-xs text-muted-foreground">
             Từ {formatDate(range.start)} đến {formatDate(range.end)}
           </p>
@@ -197,12 +356,13 @@ function TaskTimelineItem({ task }) {
           <Badge variant={STATUS_BADGE_VARIANTS[task.status]}>{getStatusLabel(task.status)}</Badge>
           <Badge variant={PRIORITY_BADGE_VARIANTS[task.priority]}>{getPriorityLabel(task.priority)}</Badge>
         </div>
-      </div>
+      </button>
     </li>
   )
 }
 
 export function WeeklyReportPage() {
+  const navigate = useNavigate()
   const { tasks, loading, error } = useTasks()
   const [monthDate, setMonthDate] = useState(() => startOfMonth(new Date()))
   const [selectedDate, setSelectedDate] = useState(() => startOfDay(new Date()))
@@ -227,6 +387,10 @@ export function WeeklyReportPage() {
     const nextMonth = addMonths(monthDate, monthOffset)
     setMonthDate(nextMonth)
     setSelectedDate(nextMonth)
+  }
+
+  function openTask(task) {
+    navigate(`/focus/${task.id}`)
   }
 
   if (loading) {
@@ -317,13 +481,16 @@ export function WeeklyReportPage() {
           </section>
 
           <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
-            <Card className="overflow-hidden">
+            <Card className="relative">
               <CardHeader className="bg-card-soft">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <CardTitle className="flex items-center gap-2">
-                    <CalendarCheck2 className="size-5 text-primary" />
-                    {formatMonthTitle(monthDate)}
-                  </CardTitle>
+                  <div className="grid gap-2">
+                    <CardTitle className="flex items-center gap-2">
+                      <CalendarCheck2 className="size-5 text-primary" />
+                      {formatMonthTitle(monthDate)}
+                    </CardTitle>
+                    <QuadrantLegend />
+                  </div>
                   <div className="flex items-center gap-2">
                     <Button
                       type="button"
@@ -355,40 +522,24 @@ export function WeeklyReportPage() {
                   ))}
                 </div>
                 <div className="mt-2 grid grid-cols-7 gap-2">
-                  {calendarDays.map((day) => {
+                  {calendarDays.map((day, index) => {
                     const dayTasks = monthTasks.filter((task) => taskCoversDay(task, day))
                     const dueCount = dayTasks.filter((task) => isSameDay(toDate(task.dueDate), day)).length
                     const isCurrentMonth = day.getMonth() === monthDate.getMonth()
                     const selected = isSameDay(day, selectedDate)
 
                     return (
-                      <button
-                        type="button"
+                      <CalendarDayCell
+                        day={day}
+                        dayTasks={dayTasks}
+                        dueCount={dueCount}
+                        isCurrentMonth={isCurrentMonth}
                         key={day.toISOString()}
-                        className={cn(
-                          'min-h-[86px] rounded-lg border bg-card p-2 text-left transition-colors hover:border-primary sm:min-h-[112px]',
-                          !isCurrentMonth && 'bg-muted/40 text-muted-foreground',
-                          selected && 'border-primary ring-2 ring-primary/25',
-                        )}
-                        onClick={() => setSelectedDate(startOfDay(day))}
-                      >
-                        <span className="flex items-center justify-between gap-1">
-                          <span className="text-sm font-bold">{day.getDate()}</span>
-                          {dueCount > 0 ? (
-                            <span className="rounded-md bg-butter px-1.5 py-0.5 text-[10px] font-black text-amber-950">
-                              {dueCount}
-                            </span>
-                          ) : null}
-                        </span>
-                        <span className="mt-2 grid gap-1">
-                          {dayTasks.slice(0, 2).map((task) => (
-                            <CalendarTaskChip task={task} key={task.id} />
-                          ))}
-                          {dayTasks.length > 2 ? (
-                            <span className="text-[10px] font-bold text-muted-foreground">+{dayTasks.length - 2}</span>
-                          ) : null}
-                        </span>
-                      </button>
+                        selected={selected}
+                        alignTooltipRight={index % 7 >= 4}
+                        onSelect={setSelectedDate}
+                        onOpenTask={openTask}
+                      />
                     )
                   })}
                 </div>
@@ -432,7 +583,7 @@ export function WeeklyReportPage() {
                   ) : (
                     <ul className="grid gap-2">
                       {selectedDayTasks.map((task) => (
-                        <TaskTimelineItem task={task} key={task.id} />
+                        <TaskTimelineItem task={task} key={task.id} onOpen={openTask} />
                       ))}
                     </ul>
                   )}
@@ -452,7 +603,7 @@ export function WeeklyReportPage() {
                   ) : (
                     <ul className="grid max-h-[420px] gap-2 overflow-y-auto pr-1">
                       {monthTasks.map((task) => (
-                        <TaskTimelineItem task={task} key={task.id} />
+                        <TaskTimelineItem task={task} key={task.id} onOpen={openTask} />
                       ))}
                     </ul>
                   )}

@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
+import { useNavigate } from 'react-router-dom'
 import {
   AlertTriangle,
   CheckCircle2,
@@ -68,6 +69,7 @@ const TASK_LIST_VIEWS = {
 }
 
 export function DashboardPage() {
+  const navigate = useNavigate()
   const { settings } = useSettings()
   const { tasks, loading, error, createTask, updateTask, deleteTask } = useTasks()
   const [showTaskForm, setShowTaskForm] = useState(false)
@@ -179,6 +181,10 @@ export function DashboardPage() {
     } catch (taskError) {
       setActionError(getFirebaseErrorMessage(taskError))
     }
+  }
+
+  function openFocusMode(task) {
+    navigate(`/focus/${task.id}`)
   }
 
   if (loading) {
@@ -371,6 +377,7 @@ export function DashboardPage() {
                   onEdit={openEditTaskForm}
                   onUpdate={handleUpdate}
                   onDelete={handleDelete}
+                  onFocus={openFocusMode}
                 />
               ))}
             </AnimatePresence>

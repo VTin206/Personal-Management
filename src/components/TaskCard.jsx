@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { formatDate } from '@/utils/date'
-import { canCompleteTask, isTaskOverdue } from '@/utils/taskStats'
+import { canCompleteTask, isActiveWorkTask, isTaskOverdue } from '@/utils/taskStats'
 import {
   getPriorityLabel,
   getStatusLabel,
@@ -26,6 +26,7 @@ export function TaskCard({ task, onEdit, onUpdate, onDelete, onFocus }) {
   const overdue = isTaskOverdue(task)
   const completed = task.status === 'completed'
   const completionBlocked = !completed && !canCompleteTask(task)
+  const focusable = onFocus && isActiveWorkTask(task)
   const startDate = task.startDate ?? task.createdAt ?? task.dueDate
 
   function handleToggleComplete() {
@@ -69,7 +70,7 @@ export function TaskCard({ task, onEdit, onUpdate, onDelete, onFocus }) {
             </div>
 
             <div className="flex shrink-0 items-center gap-2">
-              {onFocus ? (
+              {focusable ? (
                 <Button
                   type="button"
                   variant="outline"

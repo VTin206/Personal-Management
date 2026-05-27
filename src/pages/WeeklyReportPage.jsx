@@ -32,6 +32,9 @@ import { cn } from '@/utils/cn'
 import {
   addDays,
   formatDate,
+  formatTaskDateTimeRange,
+  getTaskDueDateTime,
+  getTaskStartDateTime,
   isSameDay,
   startOfDay,
   toDate,
@@ -146,8 +149,8 @@ function buildMonthCalendarDays(monthDate) {
 }
 
 function getTaskRange(task) {
-  const start = startOfDay(toDate(task.startDate) ?? toDate(task.createdAt) ?? toDate(task.dueDate) ?? new Date())
-  const end = startOfDay(toDate(task.dueDate) ?? start)
+  const start = startOfDay(getTaskStartDateTime(task) ?? toDate(task.createdAt) ?? getTaskDueDateTime(task) ?? new Date())
+  const end = startOfDay(getTaskDueDateTime(task) ?? start)
 
   if (start.getTime() <= end.getTime()) {
     return { start, end }
@@ -235,7 +238,7 @@ function CalendarRangeBar({ task, day, onOpen }) {
         startsInCell ? 'ml-0 rounded-l-md border-l' : '-ml-2 rounded-l-none border-l-0 pl-2',
         endsInCell ? 'mr-0 rounded-r-md border-r' : '-mr-2 rounded-r-none border-r-0 pr-2',
       )}
-      title={`${task.title} · ${formatDate(getTaskRange(task).start)} - ${formatDate(getTaskRange(task).end)}`}
+      title={`${task.title} · ${formatTaskDateTimeRange(task)}`}
       onClick={(event) => {
         event.stopPropagation()
         onOpen(task)
@@ -259,7 +262,6 @@ function CalendarHoverCard({ tasks, alignRight, onOpen }) {
       <p className="mb-2 text-xs font-bold uppercase text-muted-foreground">Task trong ngày</p>
       <div className="grid gap-1.5">
         {tasks.map((task) => {
-          const range = getTaskRange(task)
           const style = getCalendarStyle(task)
 
           return (
@@ -277,7 +279,7 @@ function CalendarHoverCard({ tasks, alignRight, onOpen }) {
                 <span className="min-w-0 truncate font-bold">{task.title}</span>
               </span>
               <span className="mt-0.5 block text-xs text-muted-foreground">
-                {formatDate(range.start)} - {formatDate(range.end)}
+                {formatTaskDateTimeRange(task)}
               </span>
             </button>
           )
@@ -338,7 +340,6 @@ function CalendarDayCell({
 }
 
 function TaskTimelineItem({ task, onOpen }) {
-  const range = getTaskRange(task)
   const style = getCalendarStyle(task)
 
   return (
@@ -354,7 +355,7 @@ function TaskTimelineItem({ task, onOpen }) {
             {task.title}
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Từ {formatDate(range.start)} đến {formatDate(range.end)}
+            Từ {formatTaskDateTimeRange(task)}
           </p>
         </div>
         <div className="flex shrink-0 flex-wrap gap-2">
@@ -532,7 +533,7 @@ export function WeeklyReportPage() {
                   <div className="grid grid-cols-7">
                     {calendarDays.map((day, index) => {
                       const dayTasks = monthTasks.filter((task) => taskCoversDay(task, day))
-                      const dueCount = dayTasks.filter((task) => isSameDay(toDate(task.dueDate), day)).length
+                      const dueCount = dayTasks.filter((task) => isSameDay(getTaskDueDateTime(task), day)).length
                       const isCurrentMonth = day.getMonth() === monthDate.getMonth()
                       const selected = isSameDay(day, selectedDate)
 

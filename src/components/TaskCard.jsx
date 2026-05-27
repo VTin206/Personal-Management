@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { formatDate } from '@/utils/date'
+import { formatTaskDateTimeRange } from '@/utils/date'
 import { canCompleteTask, isActiveWorkTask, isTaskOverdue } from '@/utils/taskStats'
 import {
   getPriorityLabel,
@@ -27,7 +27,6 @@ export function TaskCard({ task, onEdit, onUpdate, onDelete, onFocus }) {
   const completed = task.status === 'completed'
   const completionBlocked = !completed && !canCompleteTask(task)
   const focusable = onFocus && isActiveWorkTask(task)
-  const startDate = task.startDate ?? task.createdAt ?? task.dueDate
 
   function handleToggleComplete() {
     if (completionBlocked) return
@@ -122,7 +121,7 @@ export function TaskCard({ task, onEdit, onUpdate, onDelete, onFocus }) {
               <Badge variant={STATUS_BADGE_VARIANTS[task.status]}>{getStatusLabel(task.status)}</Badge>
               <Badge variant={PRIORITY_BADGE_VARIANTS[task.priority]}>{getPriorityLabel(task.priority)}</Badge>
               <Badge variant={overdue ? 'danger' : 'outline'}>
-                Từ {formatDate(startDate)} đến {formatDate(task.dueDate)}
+                Từ {formatTaskDateTimeRange(task)}
               </Badge>
             </div>
 

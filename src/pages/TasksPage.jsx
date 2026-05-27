@@ -17,7 +17,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { useTasks } from '@/hooks/useTasks'
-import { formatDate } from '@/utils/date'
+import { formatTaskDueDateTime } from '@/utils/date'
 import {
   EISENHOWER_QUADRANTS,
   groupTasksByEisenhower,
@@ -55,7 +55,7 @@ function EisenhowerCard({ quadrant, tasks, onFocus }) {
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="break-words text-sm font-bold">{task.title}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">Hạn: {formatDate(task.dueDate)}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Hạn: {formatTaskDueDateTime(task)}</p>
                 </div>
                 <Badge variant={PRIORITY_BADGE_VARIANTS[task.priority]}>
                   {getPriorityLabel(task.priority)}

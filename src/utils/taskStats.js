@@ -2,26 +2,27 @@ import {
   endOfCurrentWeek,
   formatDate,
   getCurrentWeekDays,
+  getTaskDueDateTime,
   isSameDay,
-  startOfDay,
-  toDate,
 } from '@/utils/date'
+
+const URGENT_DEADLINE_WINDOW_MS = 24 * 60 * 60 * 1000
 
 export function isTaskOverdue(task) {
   if (task.status === 'completed') return false
 
-  return isDueDateOverdue(task.dueDate)
+  return isDueDateOverdue(task.dueDate, task.dueTime)
 }
 
-export function isDueDateOverdue(dueDateValue) {
-  const dueDate = toDate(dueDateValue)
-  if (!dueDate) return false
+export function isDueDateOverdue(dueDateValue, dueTimeValue) {
+  const dueDateTime = getTaskDueDateTime({ dueDate: dueDateValue, dueTime: dueTimeValue })
+  if (!dueDateTime) return false
 
-  return dueDate.getTime() < startOfDay(new Date()).getTime()
+  return dueDateTime.getTime() < Date.now()
 }
 
 export function canCompleteTask(task) {
-  return !isDueDateOverdue(task.dueDate)
+  return !isDueDateOverdue(task.dueDate, task.dueTime)
 }
 
 export function canCompleteTaskWithUpdates(task, updates) {
@@ -35,16 +36,45 @@ export function canCompleteTaskWithUpdates(task, updates) {
 }
 
 export function isActiveWorkTask(task) {
-  return task.status !== 'completed' && !isDueDateOverdue(task.dueDate)
+  return task.status !== 'completed' && !isDueDateOverdue(task.dueDate, task.dueTime)
 }
 
 export function isUpcomingTask(task) {
   if (!isActiveWorkTask(task)) return false
 
-  const dueDate = toDate(task.dueDate)
-  if (!dueDate) return false
+  const dueDateTime = getTaskDueDateTime(task)
+  if (!dueDateTime) return false
 
-  return dueDate.getTime() >= startOfDay(new Date()).getTime()
+  return dueDateTime.getTime() >= Date.now()
+}
+
+export function isTaskDueWithin24Hours(task, now = new Date()) {
+  if (!isActiveWorkTask(task)) return false
+
+  const dueDateTime = getTaskDueDateTime(task)
+  if (!dueDateTime) return false
+
+  const remainingMs = dueDateTime.getTime() - now.getTime()
+  return remainingMs >= 0 && remainingMs <= URGENT_DEADLINE_WINDOW_MS
+}
+
+export function getTaskRemainingTimeLabel(task, now = new Date()) {
+  const dueDateTime = getTaskDueDateTime(task)
+  if (!dueDateTime) return 'Chưa có hạn'
+
+  const remainingMinutes = Math.max(0, Math.ceil((dueDateTime.getTime() - now.getTime()) / 60000))
+  const hours = Math.floor(remainingMinutes / 60)
+  const minutes = remainingMinutes % 60
+
+  if (hours <= 0) return `${minutes} phút nữa`
+  if (minutes === 0) return `${hours} giờ nữa`
+  return `${hours} giờ ${minutes} phút nữa`
+}
+
+export function getUrgentDeadlineTasks(tasks, now = new Date()) {
+  return tasks
+    .filter((task) => isTaskDueWithin24Hours(task, now))
+    .sort((a, b) => getTaskDueDateTime(a).getTime() - getTaskDueDateTime(b).getTime())
 }
 
 export function getDashboardStats(tasks) {
@@ -55,8 +85,8 @@ export function getDashboardStats(tasks) {
 
   const weekEnd = endOfCurrentWeek()
   const dueByEndOfWeek = tasks.filter((task) => {
-    const dueDate = toDate(task.dueDate)
-    return dueDate && dueDate.getTime() <= weekEnd.getTime()
+    const dueDateTime = getTaskDueDateTime(task)
+    return dueDateTime && dueDateTime.getTime() <= weekEnd.getTime()
   })
   const completedDueByEndOfWeek = dueByEndOfWeek.filter((task) => task.status === 'completed').length
   const weeklyCompletionRate =
@@ -76,7 +106,7 @@ export function getWeeklyChartData(tasks) {
   return getCurrentWeekDays().map((day) => ({
     day: formatDate(day, { short: true }),
     completed: tasks.filter((task) => isSameDay(task.completedAt, day)).length,
-    overdue: tasks.filter((task) => isTaskOverdue(task) && isSameDay(toDate(task.dueDate), day)).length,
+    overdue: tasks.filter((task) => isTaskOverdue(task) && isSameDay(getTaskDueDateTime(task), day)).length,
   }))
 }
 
@@ -99,6 +129,6 @@ export function getStatusChartData(tasks) {
 export function getUpcomingTasks(tasks) {
   return tasks
     .filter(isUpcomingTask)
-    .sort((a, b) => toDate(a.dueDate).getTime() - toDate(b.dueDate).getTime())
+    .sort((a, b) => getTaskDueDateTime(a).getTime() - getTaskDueDateTime(b).getTime())
     .slice(0, 5)
 }

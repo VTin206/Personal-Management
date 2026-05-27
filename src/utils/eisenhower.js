@@ -1,4 +1,4 @@
-import { addDays, startOfDay, toDate } from '@/utils/date'
+import { addDays, getTaskDueDateTime } from '@/utils/date'
 import { isActiveWorkTask } from '@/utils/taskStats'
 
 const PRIORITY_SCORE = {
@@ -41,10 +41,10 @@ export function isImportantTask(task) {
 export function isUrgentTask(task) {
   if (!isActiveWorkTask(task)) return false
 
-  const dueDate = toDate(task.dueDate)
-  if (!dueDate) return false
+  const dueDateTime = getTaskDueDateTime(task)
+  if (!dueDateTime) return false
 
-  return dueDate.getTime() <= addDays(startOfDay(new Date()), 2).getTime()
+  return dueDateTime.getTime() <= addDays(new Date(), 2).getTime()
 }
 
 export function getEisenhowerQuadrantKey(task) {
@@ -84,8 +84,8 @@ export function sortTasksByPriorityAndDeadline(tasks) {
     const rightPriority = PRIORITY_SCORE[right.priority] ?? 0
     if (leftPriority !== rightPriority) return rightPriority - leftPriority
 
-    const leftDueTime = toDate(left.dueDate)?.getTime() ?? Number.POSITIVE_INFINITY
-    const rightDueTime = toDate(right.dueDate)?.getTime() ?? Number.POSITIVE_INFINITY
+    const leftDueTime = getTaskDueDateTime(left)?.getTime() ?? Number.POSITIVE_INFINITY
+    const rightDueTime = getTaskDueDateTime(right)?.getTime() ?? Number.POSITIVE_INFINITY
     if (leftDueTime !== rightDueTime) return leftDueTime - rightDueTime
 
     return (right.createdAt?.getTime?.() ?? 0) - (left.createdAt?.getTime?.() ?? 0)

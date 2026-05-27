@@ -41,7 +41,7 @@ import { Label } from '@/components/ui/label'
 import { Progress } from '@/components/ui/progress'
 import { useTasks } from '@/hooks/useTasks'
 import { cn } from '@/utils/cn'
-import { formatDate } from '@/utils/date'
+import { formatTaskDueDateTime } from '@/utils/date'
 import { getFirebaseErrorMessage } from '@/utils/firebaseErrors'
 import { canCompleteTaskWithUpdates, isActiveWorkTask, isTaskOverdue } from '@/utils/taskStats'
 import {
@@ -1047,7 +1047,7 @@ export function FocusTaskPage() {
                   )}
                 >
                   <CalendarDays className="size-4" />
-                  Hạn {formatDate(task.dueDate)}
+                  Hạn {formatTaskDueDateTime(task)}
                 </div>
               </div>
             </motion.section>

@@ -17,7 +17,9 @@ service cloud.firestore {
         'status',
         'priority',
         'startDate',
+        'startTime',
         'dueDate',
+        'dueTime',
         'createdAt',
         'completedAt',
         'userId'
@@ -37,7 +39,9 @@ service cloud.firestore {
       && data.status in ['todo', 'in-progress', 'completed']
       && data.priority in ['low', 'medium', 'high']
       && (!data.keys().hasAny(['startDate']) || data.startDate is string)
+      && (!data.keys().hasAny(['startTime']) || data.startTime is string)
       && data.dueDate is string
+      && (!data.keys().hasAny(['dueTime']) || data.dueTime is string)
       && data.createdAt is timestamp
       && (data.completedAt == null || data.completedAt is timestamp)
       && data.userId is string;

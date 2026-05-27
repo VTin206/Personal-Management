@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { CalendarDays, Save, X } from 'lucide-react'
+import { CalendarDays, Clock3, Save, X } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -13,7 +13,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-import { addDays, getInputDateValue, toDate } from '@/utils/date'
+import { addDays, getDateTimeValue, getInputDateValue, getInputTimeValue, toDate } from '@/utils/date'
 import { TASK_PRIORITIES, TASK_STATUSES } from '@/utils/taskOptions'
 
 function createDefaultTask() {
@@ -25,7 +25,9 @@ function createDefaultTask() {
     status: 'todo',
     priority: 'medium',
     startDate: getInputDateValue(today),
+    startTime: getInputTimeValue(today),
     dueDate: getInputDateValue(addDays(today, 1)),
+    dueTime: '23:59',
   }
 }
 
@@ -40,7 +42,9 @@ function createFormState(initialTask) {
     status: initialTask.status ?? 'todo',
     priority: initialTask.priority ?? 'medium',
     startDate: initialTask.startDate ?? getInputDateValue(fallbackStartDate),
+    startTime: initialTask.startTime ?? getInputTimeValue(fallbackStartDate),
     dueDate: initialTask.dueDate ?? getInputDateValue(addDays(new Date(), 1)),
+    dueTime: initialTask.dueTime ?? '23:59',
   }
 }
 
@@ -63,14 +67,16 @@ export function TaskForm({ initialTask, onSubmit, onCancel, submitting = false }
 
     const startDate = toDate(form.startDate)
     const dueDate = toDate(form.dueDate)
+    const startDateTime = getDateTimeValue(form.startDate, form.startTime)
+    const dueDateTime = getDateTimeValue(form.dueDate, form.dueTime, { defaultTime: 'end' })
 
-    if (!startDate || !dueDate) {
-      setError('Ngày bắt đầu và ngày hạn không hợp lệ.')
+    if (!startDate || !dueDate || !startDateTime || !dueDateTime) {
+      setError('Ngày, giờ bắt đầu và hạn không hợp lệ.')
       return
     }
 
-    if (startDate.getTime() > dueDate.getTime()) {
-      setError('Ngày bắt đầu không được sau ngày hạn.')
+    if (startDateTime.getTime() > dueDateTime.getTime()) {
+      setError('Thời điểm bắt đầu không được sau thời hạn.')
       return
     }
 
@@ -114,7 +120,7 @@ export function TaskForm({ initialTask, onSubmit, onCancel, submitting = false }
             />
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div className="grid gap-2">
               <Label htmlFor="task-status">Trạng thái</Label>
               <Select value={form.status} onValueChange={(value) => updateField('status', value)}>
@@ -163,6 +169,21 @@ export function TaskForm({ initialTask, onSubmit, onCancel, submitting = false }
             </div>
 
             <div className="grid gap-2">
+              <Label htmlFor="task-start-time">Giờ bắt đầu</Label>
+              <div className="relative">
+                <Clock3 className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  id="task-start-time"
+                  type="time"
+                  className="pl-9"
+                  value={form.startTime}
+                  onChange={(event) => updateField('startTime', event.target.value)}
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="grid gap-2">
               <Label htmlFor="task-due-date">Ngày hạn</Label>
               <div className="relative">
                 <CalendarDays className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -172,6 +193,21 @@ export function TaskForm({ initialTask, onSubmit, onCancel, submitting = false }
                   className="pl-9"
                   value={form.dueDate}
                   onChange={(event) => updateField('dueDate', event.target.value)}
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="task-due-time">Giờ hạn</Label>
+              <div className="relative">
+                <Clock3 className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  id="task-due-time"
+                  type="time"
+                  className="pl-9"
+                  value={form.dueTime}
+                  onChange={(event) => updateField('dueTime', event.target.value)}
                   required
                 />
               </div>

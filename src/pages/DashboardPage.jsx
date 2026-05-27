@@ -30,7 +30,7 @@ import {
 } from '@/components/ui/select'
 import { useSettings } from '@/hooks/useSettings'
 import { useTasks } from '@/hooks/useTasks'
-import { formatDate } from '@/utils/date'
+import { formatTaskDueDateTime } from '@/utils/date'
 import { getFirebaseErrorMessage } from '@/utils/firebaseErrors'
 import {
   canCompleteTaskWithUpdates,
@@ -310,7 +310,7 @@ export function DashboardPage() {
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <p className="break-words text-sm font-bold">{task.title}</p>
-                        <p className="mt-1 text-xs text-muted-foreground">Hạn: {formatDate(task.dueDate)}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">Hạn: {formatTaskDueDateTime(task)}</p>
                       </div>
                       <Badge variant={isTaskOverdue(task) ? 'danger' : PRIORITY_BADGE_VARIANTS[task.priority]}>
                         {isTaskOverdue(task) ? 'Trễ' : getPriorityLabel(task.priority)}

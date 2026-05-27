@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
+import { UrgentDeadlineAlert } from '@/components/UrgentDeadlineAlert'
 import { useAuth } from '@/hooks/useAuth'
 import { useSettings } from '@/hooks/useSettings'
 import { cn } from '@/utils/cn'
@@ -103,6 +104,7 @@ export function AppLayout() {
       </header>
 
       <main className="container pb-24 pt-6 md:pb-10">
+        <UrgentDeadlineAlert />
         <Outlet />
       </main>
 

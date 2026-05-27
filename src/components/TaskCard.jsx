@@ -26,6 +26,7 @@ export function TaskCard({ task, onEdit, onUpdate, onDelete, onFocus }) {
   const overdue = isTaskOverdue(task)
   const completed = task.status === 'completed'
   const completionBlocked = !completed && !canCompleteTask(task)
+  const startDate = task.startDate ?? task.createdAt ?? task.dueDate
 
   function handleToggleComplete() {
     if (completionBlocked) return
@@ -119,7 +120,9 @@ export function TaskCard({ task, onEdit, onUpdate, onDelete, onFocus }) {
             <div className="flex flex-wrap gap-2">
               <Badge variant={STATUS_BADGE_VARIANTS[task.status]}>{getStatusLabel(task.status)}</Badge>
               <Badge variant={PRIORITY_BADGE_VARIANTS[task.priority]}>{getPriorityLabel(task.priority)}</Badge>
-              <Badge variant={overdue ? 'danger' : 'outline'}>Hạn: {formatDate(task.dueDate)}</Badge>
+              <Badge variant={overdue ? 'danger' : 'outline'}>
+                Từ {formatDate(startDate)} đến {formatDate(task.dueDate)}
+              </Badge>
             </div>
 
             <Select value={task.status} onValueChange={handleStatusChange}>

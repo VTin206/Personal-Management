@@ -16,6 +16,7 @@ service cloud.firestore {
         'description',
         'status',
         'priority',
+        'startDate',
         'dueDate',
         'createdAt',
         'completedAt',
@@ -35,6 +36,7 @@ service cloud.firestore {
       && data.description is string
       && data.status in ['todo', 'in-progress', 'completed']
       && data.priority in ['low', 'medium', 'high']
+      && (!data.keys().hasAny(['startDate']) || data.startDate is string)
       && data.dueDate is string
       && data.createdAt is timestamp
       && (data.completedAt == null || data.completedAt is timestamp)
@@ -50,5 +52,6 @@ service cloud.firestore {
         && isValidTask(request.resource.data);
       allow delete: if ownsTask(resource.data);
     }
+
   }
 }

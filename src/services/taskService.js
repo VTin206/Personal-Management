@@ -66,6 +66,7 @@ export function createTask(userId, task) {
     description: task.description,
     status: task.status,
     priority: task.priority,
+    startDate: task.startDate ?? task.dueDate,
     dueDate: task.dueDate,
     createdAt: serverTimestamp(),
     completedAt,

@@ -2,11 +2,17 @@ import {
   endOfCurrentWeek,
   formatDate,
   getCurrentWeekDays,
+  getInputDateValue,
   getTaskDueDateTime,
   isSameDay,
 } from '@/utils/date'
 
 const URGENT_DEADLINE_WINDOW_MS = 24 * 60 * 60 * 1000
+const DEADLINE_REMINDER_MILESTONES = [
+  { hours: 1, label: '1 giờ', thresholdMs: 60 * 60 * 1000 },
+  { hours: 6, label: '6 giờ', thresholdMs: 6 * 60 * 60 * 1000 },
+  { hours: 24, label: '24 giờ', thresholdMs: 24 * 60 * 60 * 1000 },
+]
 
 function normalizeNow(value) {
   return value instanceof Date ? value : new Date()
@@ -85,6 +91,67 @@ export function getUrgentDeadlineTasks(tasks, now = new Date()) {
     .sort((a, b) => getTaskDueDateTime(a).getTime() - getTaskDueDateTime(b).getTime())
 }
 
+export function getDeadlineReminderTasks(tasks, now = new Date()) {
+  const currentTime = normalizeNow(now)
+
+  return tasks
+    .map((task) => {
+      if (!isActiveWorkTask(task, currentTime)) return null
+
+      const dueDateTime = getTaskDueDateTime(task)
+      if (!dueDateTime) return null
+
+      const remainingMs = dueDateTime.getTime() - currentTime.getTime()
+      const milestone = DEADLINE_REMINDER_MILESTONES.find((item) => remainingMs >= 0 && remainingMs <= item.thresholdMs)
+      if (!milestone) return null
+
+      return {
+        task,
+        milestone,
+        remainingMs,
+      }
+    })
+    .filter(Boolean)
+    .sort((left, right) => left.remainingMs - right.remainingMs)
+}
+
+export function getTaskFocusSeconds(task) {
+  const focusSeconds = Number(task?.focusSeconds)
+
+  return Number.isFinite(focusSeconds) && focusSeconds > 0 ? Math.floor(focusSeconds) : 0
+}
+
+export function getTaskFocusLog(task) {
+  return task?.focusLog && typeof task.focusLog === 'object' ? task.focusLog : {}
+}
+
+export function formatFocusDuration(totalSeconds) {
+  const normalizedSeconds = Math.max(0, Math.floor(Number(totalSeconds) || 0))
+  const hours = Math.floor(normalizedSeconds / 3600)
+  const minutes = Math.floor((normalizedSeconds % 3600) / 60)
+
+  if (hours <= 0) return `${minutes} phút`
+  if (minutes === 0) return `${hours} giờ`
+  return `${hours} giờ ${minutes} phút`
+}
+
+export function buildFocusTimeUpdates(task, elapsedSeconds, now = new Date()) {
+  const normalizedElapsedSeconds = Math.max(0, Math.floor(Number(elapsedSeconds) || 0))
+  if (normalizedElapsedSeconds <= 0) return null
+
+  const dateKey = getInputDateValue(normalizeNow(now))
+  const currentLog = getTaskFocusLog(task)
+  const nextLog = {
+    ...currentLog,
+    [dateKey]: Math.max(0, Math.floor(Number(currentLog[dateKey]) || 0)) + normalizedElapsedSeconds,
+  }
+
+  return {
+    focusSeconds: getTaskFocusSeconds(task) + normalizedElapsedSeconds,
+    focusLog: nextLog,
+  }
+}
+
 export function getDashboardStats(tasks) {
   const total = tasks.length
   const completed = tasks.filter((task) => task.status === 'completed').length
@@ -116,6 +183,22 @@ export function getWeeklyChartData(tasks) {
     completed: tasks.filter((task) => isSameDay(task.completedAt, day)).length,
     overdue: tasks.filter((task) => isTaskOverdue(task) && isSameDay(getTaskDueDateTime(task), day)).length,
   }))
+}
+
+export function getWeeklyFocusChartData(tasks) {
+  return getCurrentWeekDays().map((day) => {
+    const dateKey = getInputDateValue(day)
+    const focusSeconds = tasks.reduce((total, task) => {
+      const logValue = Number(getTaskFocusLog(task)[dateKey])
+      return total + (Number.isFinite(logValue) && logValue > 0 ? logValue : 0)
+    }, 0)
+
+    return {
+      day: formatDate(day, { short: true }),
+      hours: Number((focusSeconds / 3600).toFixed(2)),
+      focusSeconds,
+    }
+  })
 }
 
 export function getStatusChartData(tasks) {

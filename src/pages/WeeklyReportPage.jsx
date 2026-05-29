@@ -536,7 +536,7 @@ export function WeeklyReportPage() {
   const now = useNow()
   const [monthDate, setMonthDate] = useState(() => startOfMonth(new Date()))
   const [selectedDate, setSelectedDate] = useState(() => startOfDay(new Date()))
-  const [calendarView, setCalendarView] = useState('month')
+  const [calendarView, setCalendarView] = useState('week')
   const [draggingTaskId, setDraggingTaskId] = useState('')
   const [actionError, setActionError] = useState('')
   const weeklyData = getWeeklyChartData(tasks)
@@ -552,9 +552,10 @@ export function WeeklyReportPage() {
   const calendarRange = useMemo(() => getVisibleCalendarRange(calendarDays), [calendarDays])
   const visibleTasks = useMemo(
     () => sortByRange(tasks.filter((task) => (
-      calendarView === 'month'
+      task.status !== 'completed'
+      && (calendarView === 'month'
         ? taskOverlapsMonth(task, monthDate)
-        : taskOverlapsCalendarRange(task, calendarRange)
+        : taskOverlapsCalendarRange(task, calendarRange))
     ))),
     [calendarRange, calendarView, monthDate, tasks],
   )
@@ -564,7 +565,7 @@ export function WeeklyReportPage() {
     [visibleTasks, selectedDate],
   )
   const selectedDayRate = getCompletionRate(selectedDayTasks)
-  const selectedDayCompleted = selectedDayTasks.filter((task) => task.status === 'completed').length
+  const completedOnSelectedDay = tasks.filter((task) => task.status === 'completed' && taskCoversDay(task, selectedDate)).length
   const selectedDayOverdue = selectedDayTasks.filter(isTaskOverdue).length
 
   function changeCalendarPage(pageOffset) {
@@ -824,7 +825,7 @@ export function WeeklyReportPage() {
                     </div>
                     <div className="rounded-lg border bg-card-soft p-3">
                       <p className="text-xs font-semibold text-muted-foreground">Đã làm</p>
-                      <p className="mt-1 text-2xl font-bold">{selectedDayCompleted}</p>
+                      <p className="mt-1 text-2xl font-bold">{completedOnSelectedDay}</p>
                     </div>
                     <div className="rounded-lg border bg-card-soft p-3">
                       <p className="text-xs font-semibold text-muted-foreground">Trễ</p>

@@ -12,7 +12,9 @@ import {
 } from 'recharts'
 import {
   BarChart3,
+  CalendarDays,
   CalendarCheck2,
+  CalendarRange,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
@@ -37,14 +39,19 @@ import {
   getTaskDueDateTime,
   getTaskStartDateTime,
   isSameDay,
+  startOfCurrentWeek,
   startOfDay,
   toDate,
 } from '@/utils/date'
 import {
+  formatFocusDuration,
   getDashboardStats,
+  getWeeklyFocusChartData,
   getWeeklyChartData,
   isTaskOverdue,
 } from '@/utils/taskStats'
+import { getFirebaseErrorMessage } from '@/utils/firebaseErrors'
+import { getTaskDragDateUpdates } from '@/utils/taskSchedule'
 import {
   EISENHOWER_QUADRANTS,
   getEisenhowerQuadrantKey,
@@ -57,6 +64,19 @@ import {
 } from '@/utils/taskOptions'
 
 const WEEKDAY_LABELS = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN']
+const CALENDAR_DRAG_TYPE = 'application/x-pastel-task-drag'
+const CALENDAR_VIEWS = {
+  month: {
+    key: 'month',
+    label: 'Tháng',
+    icon: CalendarDays,
+  },
+  week: {
+    key: 'week',
+    label: 'Tuần',
+    icon: CalendarRange,
+  },
+}
 const QUADRANT_CALENDAR_STYLES = {
   do: {
     range: 'border-rose-200 bg-peach text-rose-950 hover:bg-peach/90',
@@ -149,6 +169,34 @@ function buildMonthCalendarDays(monthDate) {
   return Array.from({ length: 42 }, (_, index) => addDays(calendarStart, index))
 }
 
+function buildWeekCalendarDays(date) {
+  const weekStart = startOfCurrentWeek(date)
+
+  return Array.from({ length: 7 }, (_, index) => addDays(weekStart, index))
+}
+
+function formatWeekTitle(date) {
+  const weekStart = startOfCurrentWeek(date)
+  const weekEnd = addDays(weekStart, 6)
+
+  return `${formatDate(weekStart)} - ${formatDate(weekEnd)}`
+}
+
+function getVisibleCalendarRange(days) {
+  return {
+    start: startOfDay(days[0]),
+    end: startOfDay(days[days.length - 1]),
+  }
+}
+
+function parseCalendarDragPayload(event) {
+  try {
+    return JSON.parse(event.dataTransfer.getData(CALENDAR_DRAG_TYPE) || event.dataTransfer.getData('text/plain'))
+  } catch {
+    return null
+  }
+}
+
 function getTaskRange(task) {
   const start = startOfDay(getTaskStartDateTime(task) ?? toDate(task.createdAt) ?? getTaskDueDateTime(task) ?? new Date())
   const end = startOfDay(getTaskDueDateTime(task) ?? start)
@@ -166,6 +214,12 @@ function taskOverlapsMonth(task, monthDate) {
   const monthEnd = endOfMonth(monthDate)
 
   return range.start.getTime() <= monthEnd.getTime() && range.end.getTime() >= monthStart.getTime()
+}
+
+function taskOverlapsCalendarRange(task, calendarRange) {
+  const range = getTaskRange(task)
+
+  return range.start.getTime() <= calendarRange.end.getTime() && range.end.getTime() >= calendarRange.start.getTime()
 }
 
 function taskCoversDay(task, day) {
@@ -240,17 +294,55 @@ function QuadrantLegend() {
   )
 }
 
-function CalendarRangeBar({ task, day, now, onOpen }) {
+function CalendarViewSegment({ value, onChange }) {
+  return (
+    <div className="grid grid-cols-2 rounded-lg border bg-card p-1">
+      {Object.values(CALENDAR_VIEWS).map((view) => {
+        const Icon = view.icon
+        const active = value === view.key
+
+        return (
+          <button
+            type="button"
+            className={cn(
+              'inline-flex h-8 items-center justify-center gap-1.5 rounded-md px-3 text-xs font-black transition-colors',
+              active ? 'bg-primary text-primary-foreground shadow-soft' : 'text-muted-foreground hover:bg-card-soft hover:text-foreground',
+            )}
+            key={view.key}
+            onClick={() => onChange(view.key)}
+          >
+            <Icon className="size-4" />
+            {view.label}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+function CalendarRangeBar({ task, day, now, onOpen, onDragTask }) {
   const style = getCalendarStyle(task, now)
   const showLabel = shouldShowRangeLabel(task, day)
   const startsInCell = isRangeStartInCell(task, day)
   const endsInCell = isRangeEndInCell(task, day)
 
+  function startDrag(event, mode) {
+    const payload = JSON.stringify({ taskId: task.id, mode })
+
+    event.stopPropagation()
+    event.dataTransfer.effectAllowed = 'move'
+    event.dataTransfer.setData(CALENDAR_DRAG_TYPE, payload)
+    event.dataTransfer.setData('text/plain', payload)
+    onDragTask(task.id)
+  }
+
   return (
-    <button
-      type="button"
-      className={cn(
-        'relative z-10 h-5 min-w-0 border-y px-2 text-left text-[10px] font-black leading-5 transition-colors',
+    <div className="relative z-10 h-5 min-w-0">
+      <button
+        type="button"
+        draggable
+        className={cn(
+        'absolute inset-0 min-w-0 cursor-grab border-y px-2 text-left text-[10px] font-black leading-5 transition-colors active:cursor-grabbing',
         style.range,
         startsInCell ? 'ml-0 rounded-l-md border-l' : '-ml-2 rounded-l-none border-l-0 pl-2',
         endsInCell ? 'mr-0 rounded-r-md border-r' : '-mr-2 rounded-r-none border-r-0 pr-2',
@@ -260,9 +352,38 @@ function CalendarRangeBar({ task, day, now, onOpen }) {
         event.stopPropagation()
         onOpen(task)
       }}
+      onDragEnd={() => onDragTask('')}
+      onDragStart={(event) => startDrag(event, 'move')}
     >
       <span className={cn('block truncate', !showLabel && 'sr-only')}>{task.title}</span>
-    </button>
+      </button>
+      {startsInCell ? (
+        <span
+          aria-label="Kéo để đổi ngày bắt đầu"
+          draggable
+          role="button"
+          tabIndex={-1}
+          title="Kéo để đổi ngày bắt đầu"
+          className="absolute left-0 top-0 z-20 h-5 w-2 cursor-ew-resize rounded-l-md bg-black/10 hover:bg-black/20"
+          onClick={(event) => event.stopPropagation()}
+          onDragEnd={() => onDragTask('')}
+          onDragStart={(event) => startDrag(event, 'start')}
+        />
+      ) : null}
+      {endsInCell ? (
+        <span
+          aria-label="Kéo để đổi ngày hạn"
+          draggable
+          role="button"
+          tabIndex={-1}
+          title="Kéo để đổi ngày hạn"
+          className="absolute right-0 top-0 z-20 h-5 w-2 cursor-ew-resize rounded-r-md bg-black/10 hover:bg-black/20"
+          onClick={(event) => event.stopPropagation()}
+          onDragEnd={() => onDragTask('')}
+          onDragStart={(event) => startDrag(event, 'end')}
+        />
+      ) : null}
+    </div>
   )
 }
 
@@ -311,25 +432,43 @@ function CalendarDayCell({
   day,
   dayTasks,
   dayRows,
+  draggingTaskId,
   dueCount,
   overflowCount,
   isCurrentMonth,
+  isLastRow,
   now,
   selected,
+  view,
   alignTooltipRight,
   onSelect,
+  onDropTask,
+  onDragTask,
   onOpenTask,
 }) {
+  const dragCoversDay = draggingTaskId && dayTasks.some((task) => task.id === draggingTaskId)
+
   return (
     <div
       className={cn(
-        'group/calendar-day relative min-h-[92px] border-b border-r bg-card p-2 text-left transition-colors hover:bg-card-soft/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary sm:min-h-[124px]',
+        'group/calendar-day relative border-b border-r bg-card p-2 text-left transition-colors hover:bg-card-soft/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary',
+        view === 'week' ? 'min-h-[240px] sm:min-h-[340px]' : 'min-h-[92px] sm:min-h-[124px]',
         cellIndex % 7 === 6 && 'border-r-0',
-        cellIndex >= 35 && 'border-b-0',
+        isLastRow && 'border-b-0',
         !isCurrentMonth && 'bg-muted/30 text-muted-foreground',
         selected && 'z-20 bg-primary/5 ring-2 ring-inset ring-primary/35',
+        dragCoversDay && 'bg-primary/10',
       )}
       onClick={() => onSelect(startOfDay(day))}
+      onDragOver={(event) => {
+        event.preventDefault()
+        event.dataTransfer.dropEffect = 'move'
+      }}
+      onDrop={(event) => {
+        event.preventDefault()
+        event.stopPropagation()
+        onDropTask(parseCalendarDragPayload(event), day)
+      }}
       onKeyDown={(event) => {
         if (!['Enter', ' '].includes(event.key)) return
         event.preventDefault()
@@ -349,7 +488,7 @@ function CalendarDayCell({
       <div className="mt-2 grid gap-1">
         {dayRows.map((task, rowIndex) => (
           task ? (
-            <CalendarRangeBar task={task} day={day} key={task.id} now={now} onOpen={onOpenTask} />
+            <CalendarRangeBar task={task} day={day} key={task.id} now={now} onDragTask={onDragTask} onOpen={onOpenTask} />
           ) : (
             <span aria-hidden="true" className="h-5" key={`empty-${rowIndex}`} />
           )
@@ -393,32 +532,75 @@ function TaskTimelineItem({ task, now, onOpen }) {
 
 export function WeeklyReportPage() {
   const navigate = useNavigate()
-  const { tasks, loading, error } = useTasks()
+  const { tasks, loading, error, updateTask } = useTasks()
   const now = useNow()
   const [monthDate, setMonthDate] = useState(() => startOfMonth(new Date()))
   const [selectedDate, setSelectedDate] = useState(() => startOfDay(new Date()))
+  const [calendarView, setCalendarView] = useState('month')
+  const [draggingTaskId, setDraggingTaskId] = useState('')
+  const [actionError, setActionError] = useState('')
   const weeklyData = getWeeklyChartData(tasks)
+  const weeklyFocusData = getWeeklyFocusChartData(tasks)
   const stats = getDashboardStats(tasks)
   const totalCompletedThisWeek = weeklyData.reduce((total, item) => total + item.completed, 0)
   const totalOverdueThisWeek = weeklyData.reduce((total, item) => total + item.overdue, 0)
-  const calendarDays = useMemo(() => buildMonthCalendarDays(monthDate), [monthDate])
-  const monthTasks = useMemo(
-    () => sortByRange(tasks.filter((task) => taskOverlapsMonth(task, monthDate))),
-    [monthDate, tasks],
+  const totalFocusSecondsThisWeek = weeklyFocusData.reduce((total, item) => total + item.focusSeconds, 0)
+  const calendarDays = useMemo(
+    () => (calendarView === 'week' ? buildWeekCalendarDays(selectedDate) : buildMonthCalendarDays(monthDate)),
+    [calendarView, monthDate, selectedDate],
   )
-  const calendarTaskLanes = useMemo(() => buildCalendarTaskLanes(monthTasks), [monthTasks])
+  const calendarRange = useMemo(() => getVisibleCalendarRange(calendarDays), [calendarDays])
+  const visibleTasks = useMemo(
+    () => sortByRange(tasks.filter((task) => (
+      calendarView === 'month'
+        ? taskOverlapsMonth(task, monthDate)
+        : taskOverlapsCalendarRange(task, calendarRange)
+    ))),
+    [calendarRange, calendarView, monthDate, tasks],
+  )
+  const calendarTaskLanes = useMemo(() => buildCalendarTaskLanes(visibleTasks), [visibleTasks])
   const selectedDayTasks = useMemo(
-    () => sortByRange(monthTasks.filter((task) => taskCoversDay(task, selectedDate))),
-    [monthTasks, selectedDate],
+    () => sortByRange(visibleTasks.filter((task) => taskCoversDay(task, selectedDate))),
+    [visibleTasks, selectedDate],
   )
   const selectedDayRate = getCompletionRate(selectedDayTasks)
   const selectedDayCompleted = selectedDayTasks.filter((task) => task.status === 'completed').length
   const selectedDayOverdue = selectedDayTasks.filter(isTaskOverdue).length
 
-  function changeMonth(monthOffset) {
-    const nextMonth = addMonths(monthDate, monthOffset)
+  function changeCalendarPage(pageOffset) {
+    if (calendarView === 'week') {
+      const nextWeekDate = addDays(selectedDate, pageOffset * 7)
+      setSelectedDate(startOfDay(nextWeekDate))
+      setMonthDate(startOfMonth(nextWeekDate))
+      return
+    }
+
+    const nextMonth = addMonths(monthDate, pageOffset)
     setMonthDate(nextMonth)
     setSelectedDate(nextMonth)
+  }
+
+  function changeCalendarView(nextView) {
+    setCalendarView(nextView)
+    setMonthDate(startOfMonth(selectedDate))
+  }
+
+  async function dropTaskOnDay(payload, day) {
+    if (!payload?.taskId) return
+
+    setDraggingTaskId('')
+    setActionError('')
+
+    const task = tasks.find((item) => item.id === payload.taskId)
+    if (!task) return
+
+    try {
+      await updateTask(task.id, getTaskDragDateUpdates(task, payload.mode, day))
+      setSelectedDate(startOfDay(day))
+      setMonthDate(startOfMonth(day))
+    } catch (taskError) {
+      setActionError(getFirebaseErrorMessage(taskError))
+    }
   }
 
   function openTask(task) {
@@ -457,9 +639,9 @@ export function WeeklyReportPage() {
         </div>
       </section>
 
-      {error ? (
+      {error || actionError ? (
         <p className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm font-semibold text-destructive">
-          {error}
+          {actionError || error}
         </p>
       ) : null}
 
@@ -467,14 +649,15 @@ export function WeeklyReportPage() {
         <EmptyState title="Chưa có dữ liệu báo cáo" description="Task mới sẽ xuất hiện trong lịch và biểu đồ." />
       ) : (
         <>
-          <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
             <ReportMetric title="Task đã hoàn thành" value={stats.completed} icon={CheckCircle2} tone="bg-mint text-emerald-900" />
             <ReportMetric title="Task trễ hạn" value={stats.overdue} icon={Clock3} tone="bg-peach text-rose-950" />
             <ReportMetric title="Đã làm tuần này" value={totalCompletedThisWeek} icon={CalendarCheck2} tone="bg-sky text-sky-950" />
             <ReportMetric title="Trễ hạn tuần này" value={totalOverdueThisWeek} icon={BarChart3} tone="bg-butter text-amber-950" />
+            <ReportMetric title="Tập trung tuần này" value={formatFocusDuration(totalFocusSecondsThisWeek)} icon={Target} tone="bg-lavender text-violet-950" />
           </section>
 
-          <section className="grid gap-4">
+          <section className="grid gap-4 xl:grid-cols-2">
             <Card className="overflow-hidden">
               <CardHeader className="bg-card-soft">
                 <CardTitle className="flex items-center gap-2">
@@ -510,6 +693,33 @@ export function WeeklyReportPage() {
                 </div>
               </CardContent>
             </Card>
+            <Card className="overflow-hidden">
+              <CardHeader className="bg-card-soft">
+                <CardTitle className="flex items-center gap-2">
+                  <Target className="size-5 text-primary" />
+                  Giờ tập trung trong tuần
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-5">
+                <div className="h-[320px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={weeklyFocusData} margin={{ left: -18, right: 12, top: 8, bottom: 0 }}>
+                      <CartesianGrid stroke="#efe7f3" strokeDasharray="4 6" vertical={false} />
+                      <XAxis dataKey="day" tickLine={false} axisLine={false} tickMargin={10} />
+                      <YAxis allowDecimals={false} tickLine={false} axisLine={false} />
+                      <Tooltip content={<PrettyTooltip />} cursor={{ fill: 'rgba(215, 203, 255, 0.26)' }} />
+                      <Bar
+                        dataKey="hours"
+                        name="Giờ tập trung"
+                        fill="#d8ccff"
+                        radius={[8, 8, 0, 0]}
+                        barSize={32}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
           </section>
 
           <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
@@ -519,18 +729,19 @@ export function WeeklyReportPage() {
                   <div className="grid gap-2">
                     <CardTitle className="flex items-center gap-2">
                       <CalendarCheck2 className="size-5 text-primary" />
-                      {formatMonthTitle(monthDate)}
+                      {calendarView === 'week' ? formatWeekTitle(selectedDate) : formatMonthTitle(monthDate)}
                     </CardTitle>
                     <QuadrantLegend />
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <CalendarViewSegment value={calendarView} onChange={changeCalendarView} />
                     <Button
                       type="button"
                       variant="outline"
                       size="icon"
                       title="Tháng trước"
                       aria-label="Tháng trước"
-                      onClick={() => changeMonth(-1)}
+                      onClick={() => changeCalendarPage(-1)}
                     >
                       <ChevronLeft />
                     </Button>
@@ -540,7 +751,7 @@ export function WeeklyReportPage() {
                       size="icon"
                       title="Tháng sau"
                       aria-label="Tháng sau"
-                      onClick={() => changeMonth(1)}
+                      onClick={() => changeCalendarPage(1)}
                     >
                       <ChevronRight />
                     </Button>
@@ -558,13 +769,15 @@ export function WeeklyReportPage() {
                   </div>
                   <div className="grid grid-cols-7">
                     {calendarDays.map((day, index) => {
-                      const dayTasks = monthTasks.filter((task) => taskCoversDay(task, day))
-                      const dayRows = Array.from({ length: 4 }, (_, laneIndex) => (
+                      const dayTasks = visibleTasks.filter((task) => taskCoversDay(task, day))
+                      const rowCount = calendarView === 'week' ? 10 : 4
+                      const dayRows = Array.from({ length: rowCount }, (_, laneIndex) => (
                         dayTasks.find((task) => calendarTaskLanes.get(task.id) === laneIndex) ?? null
                       ))
-                      const overflowCount = dayTasks.filter((task) => (calendarTaskLanes.get(task.id) ?? 0) >= 4).length
+                      const overflowCount = dayTasks.filter((task) => (calendarTaskLanes.get(task.id) ?? 0) >= rowCount).length
                       const dueCount = dayTasks.filter((task) => isSameDay(getTaskDueDateTime(task), day)).length
-                      const isCurrentMonth = day.getMonth() === monthDate.getMonth()
+                      const isCurrentMonth = calendarView === 'week' || day.getMonth() === monthDate.getMonth()
+                      const isLastRow = index >= calendarDays.length - 7
                       const selected = isSameDay(day, selectedDate)
 
                       return (
@@ -573,13 +786,18 @@ export function WeeklyReportPage() {
                           day={day}
                           dayTasks={dayTasks}
                           dayRows={dayRows}
+                          draggingTaskId={draggingTaskId}
                           dueCount={dueCount}
                           overflowCount={overflowCount}
                           isCurrentMonth={isCurrentMonth}
+                          isLastRow={isLastRow}
                           now={now}
                           key={day.toISOString()}
                           selected={selected}
+                          view={calendarView}
                           alignTooltipRight={index % 7 >= 4}
+                          onDragTask={setDraggingTaskId}
+                          onDropTask={dropTaskOnDay}
                           onSelect={setSelectedDate}
                           onOpenTask={openTask}
                         />
@@ -638,15 +856,17 @@ export function WeeklyReportPage() {
                 <CardHeader className="bg-card-soft">
                   <CardTitle className="flex items-center gap-2">
                     <ListChecks className="size-5 text-primary" />
-                    Task trong tháng
+                    {calendarView === 'week' ? 'Task trong tuần' : 'Task trong tháng'}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="pt-5">
-                  {monthTasks.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">Không có task trong tháng này.</p>
+                  {visibleTasks.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      {calendarView === 'week' ? 'Không có task trong tuần này.' : 'Không có task trong tháng này.'}
+                    </p>
                   ) : (
                     <ul className="grid max-h-[420px] gap-2 overflow-y-auto pr-1">
-                      {monthTasks.map((task) => (
+                      {visibleTasks.map((task) => (
                         <TaskTimelineItem task={task} key={task.id} now={now} onOpen={openTask} />
                       ))}
                     </ul>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
@@ -43,7 +43,15 @@ import { useTasks } from '@/hooks/useTasks'
 import { cn } from '@/utils/cn'
 import { formatTaskDueDateTime } from '@/utils/date'
 import { getFirebaseErrorMessage } from '@/utils/firebaseErrors'
-import { canCompleteTaskWithUpdates, isActiveWorkTask, isTaskOverdue } from '@/utils/taskStats'
+import {
+  buildFocusTimeUpdates,
+  canCompleteTaskWithUpdates,
+  formatFocusDuration,
+  getTaskFocusLog,
+  getTaskFocusSeconds,
+  isActiveWorkTask,
+  isTaskOverdue,
+} from '@/utils/taskStats'
 import {
   getPriorityLabel,
   getStatusLabel,
@@ -703,10 +711,97 @@ export function FocusTaskPage() {
   const [actionError, setActionError] = useState('')
   const hasPlayedTaskStartSound = useRef(false)
   const timerAnchorRef = useRef(null)
+  const taskRef = useRef(null)
+  const focusStatsRef = useRef({ taskId: '', focusSeconds: 0, focusLog: {} })
+  const focusSaveQueueRef = useRef(Promise.resolve())
 
   useEffect(() => {
     hasPlayedTaskStartSound.current = false
   }, [taskId])
+
+  useEffect(() => {
+    taskRef.current = task
+
+    if (!task) return
+
+    if (focusStatsRef.current.taskId !== task.id) {
+      focusStatsRef.current = {
+        taskId: task.id,
+        focusSeconds: getTaskFocusSeconds(task),
+        focusLog: getTaskFocusLog(task),
+      }
+      return
+    }
+
+    if (getTaskFocusSeconds(task) >= focusStatsRef.current.focusSeconds) {
+      focusStatsRef.current = {
+        taskId: task.id,
+        focusSeconds: getTaskFocusSeconds(task),
+        focusLog: getTaskFocusLog(task),
+      }
+    }
+  }, [task])
+
+  const saveFocusSeconds = useCallback((elapsedSeconds) => {
+    const activeTask = taskRef.current
+    if (!activeTask || elapsedSeconds <= 0) return Promise.resolve()
+
+    if (focusStatsRef.current.taskId !== activeTask.id) {
+      focusStatsRef.current = {
+        taskId: activeTask.id,
+        focusSeconds: getTaskFocusSeconds(activeTask),
+        focusLog: getTaskFocusLog(activeTask),
+      }
+    }
+
+    const updates = buildFocusTimeUpdates(
+      {
+        ...activeTask,
+        focusSeconds: focusStatsRef.current.focusSeconds,
+        focusLog: focusStatsRef.current.focusLog,
+      },
+      elapsedSeconds,
+    )
+    if (!updates) return Promise.resolve()
+
+    focusStatsRef.current = {
+      taskId: activeTask.id,
+      focusSeconds: updates.focusSeconds,
+      focusLog: updates.focusLog,
+    }
+
+    focusSaveQueueRef.current = focusSaveQueueRef.current
+      .catch(() => undefined)
+      .then(() => updateTask(activeTask.id, updates))
+      .catch((focusError) => {
+        setActionError(getFirebaseErrorMessage(focusError))
+      })
+
+    return focusSaveQueueRef.current
+  }, [updateTask])
+
+  const consumeElapsedFocusSeconds = useCallback((nowMs = Date.now()) => {
+    const anchor = timerAnchorRef.current
+    if (!anchor || anchor.mode !== 'focus') return 0
+
+    const saveFrom = anchor.lastSavedAt ?? anchor.startedAt
+    const sessionEnd = anchor.startedAt + anchor.secondsAtStart * 1000
+    const clampedNow = Math.min(nowMs, sessionEnd)
+    const elapsedSeconds = Math.max(0, Math.floor((clampedNow - saveFrom) / 1000))
+
+    if (elapsedSeconds > 0) {
+      anchor.lastSavedAt = saveFrom + elapsedSeconds * 1000
+    }
+
+    return elapsedSeconds
+  }, [])
+
+  const flushFocusTime = useCallback((nowMs = Date.now()) => {
+    const elapsedSeconds = consumeElapsedFocusSeconds(nowMs)
+    if (elapsedSeconds <= 0) return Promise.resolve()
+
+    return saveFocusSeconds(elapsedSeconds)
+  }, [consumeElapsedFocusSeconds, saveFocusSeconds])
 
   useEffect(() => {
     if (!running) {
@@ -727,6 +822,7 @@ export function FocusTaskPage() {
 
       if (secondsLeft <= 0) {
         const nextMode = getNextMode(anchor.mode)
+        flushFocusTime()
         timerAnchorRef.current = null
         setMode(nextMode)
         setRunning(false)
@@ -737,15 +833,18 @@ export function FocusTaskPage() {
     syncTimerWithClock()
 
     const intervalId = window.setInterval(syncTimerWithClock, 500)
+    const focusSaveIntervalId = window.setInterval(() => flushFocusTime(), 60_000)
     window.addEventListener('focus', syncTimerWithClock)
     document.addEventListener('visibilitychange', syncTimerWithClock)
 
     return () => {
       window.clearInterval(intervalId)
+      window.clearInterval(focusSaveIntervalId)
       window.removeEventListener('focus', syncTimerWithClock)
       document.removeEventListener('visibilitychange', syncTimerWithClock)
+      flushFocusTime()
     }
-  }, [running])
+  }, [flushFocusTime, running])
 
   const currentMode = FOCUS_MODES[mode]
   const selectedTheme = FOCUS_THEME_MAP[selectedThemeKey] ?? FOCUS_THEME_MAP[DEFAULT_FOCUS_THEME_KEY]
@@ -765,12 +864,14 @@ export function FocusTaskPage() {
   }
 
   function switchMode(nextMode) {
+    flushFocusTime()
     timerAnchorRef.current = null
     setMode(nextMode)
     setRunning(false)
   }
 
   function resetTimer() {
+    flushFocusTime()
     timerAnchorRef.current = null
     setRunning(false)
     setSecondsByMode((current) => ({ ...current, [mode]: durations[mode] * 60 }))
@@ -786,6 +887,7 @@ export function FocusTaskPage() {
       const anchor = timerAnchorRef.current
       if (anchor) {
         const secondsLeft = getTimerAnchorSecondsLeft(anchor)
+        flushFocusTime()
         setSecondsByMode((current) => ({ ...current, [anchor.mode]: secondsLeft }))
       }
       timerAnchorRef.current = null
@@ -808,6 +910,7 @@ export function FocusTaskPage() {
       mode,
       secondsAtStart,
       startedAt: Date.now(),
+      lastSavedAt: Date.now(),
     }
     setRunning(true)
   }
@@ -832,6 +935,7 @@ export function FocusTaskPage() {
     setActionError('')
 
     try {
+      await flushFocusTime()
       await updateTask(task.id, { status: 'completed' })
       playTaskCompleteSound()
       timerAnchorRef.current = null
@@ -1048,6 +1152,10 @@ export function FocusTaskPage() {
                 >
                   <CalendarDays className="size-4" />
                   Hạn {formatTaskDueDateTime(task)}
+                </div>
+                <div className={cn('ml-2 mt-3 inline-flex h-8 items-center gap-2 rounded-full border px-3 text-xs font-bold', selectedTheme.metaClassName)}>
+                  <Timer className="size-4" />
+                  Đã tập trung {formatFocusDuration(getTaskFocusSeconds(task))}
                 </div>
               </div>
             </motion.section>

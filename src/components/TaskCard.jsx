@@ -1,4 +1,4 @@
-import { CheckCircle2, Pencil, RotateCcw, Timer, Trash2 } from 'lucide-react'
+import { CalendarPlus, CheckCircle2, Pencil, RotateCcw, Timer, Trash2 } from 'lucide-react'
 import { motion } from 'framer-motion'
 
 import { Badge } from '@/components/ui/badge'
@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { formatTaskDateTimeRange } from '@/utils/date'
+import { getQuickExtendTaskUpdates, QUICK_EXTEND_OPTIONS } from '@/utils/taskSchedule'
 import { canCompleteTask, isActiveWorkTask, isTaskOverdue } from '@/utils/taskStats'
 import {
   getPriorityLabel,
@@ -43,6 +44,10 @@ export function TaskCard({ task, onEdit, onUpdate, onDelete, onFocus }) {
   function handleDelete() {
     const confirmed = window.confirm(`Xóa task "${task.title}"?`)
     if (confirmed) onDelete(task.id)
+  }
+
+  function quickExtend(optionKey) {
+    onUpdate(task.id, getQuickExtendTaskUpdates(task, optionKey))
   }
 
   return (
@@ -142,6 +147,26 @@ export function TaskCard({ task, onEdit, onUpdate, onDelete, onFocus }) {
               </SelectContent>
             </Select>
           </div>
+
+          {overdue && !completed ? (
+            <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-card-soft p-2">
+              <span className="inline-flex items-center gap-1.5 px-1 text-xs font-black text-muted-foreground">
+                <CalendarPlus className="size-4" />
+                Gia hạn nhanh
+              </span>
+              {QUICK_EXTEND_OPTIONS.map((option) => (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  key={option.key}
+                  onClick={() => quickExtend(option.key)}
+                >
+                  {option.label}
+                </Button>
+              ))}
+            </div>
+          ) : null}
         </CardContent>
       </Card>
     </motion.div>

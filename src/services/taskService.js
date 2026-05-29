@@ -31,6 +31,8 @@ function normalizeTask(documentSnapshot) {
     ...data,
     createdAt: toDate(data.createdAt),
     completedAt: toDate(data.completedAt),
+    focusSeconds: Number.isFinite(data.focusSeconds) ? data.focusSeconds : 0,
+    focusLog: data.focusLog && typeof data.focusLog === 'object' ? data.focusLog : {},
   }
 }
 
@@ -70,6 +72,8 @@ export function createTask(userId, task) {
     startTime: task.startTime ?? '',
     dueDate: task.dueDate,
     dueTime: task.dueTime ?? '',
+    focusSeconds: 0,
+    focusLog: {},
     createdAt: serverTimestamp(),
     completedAt,
     userId,

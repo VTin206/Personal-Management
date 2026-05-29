@@ -20,6 +20,8 @@ service cloud.firestore {
         'startTime',
         'dueDate',
         'dueTime',
+        'focusSeconds',
+        'focusLog',
         'createdAt',
         'completedAt',
         'userId'
@@ -42,6 +44,8 @@ service cloud.firestore {
       && (!data.keys().hasAny(['startTime']) || data.startTime is string)
       && data.dueDate is string
       && (!data.keys().hasAny(['dueTime']) || data.dueTime is string)
+      && (!data.keys().hasAny(['focusSeconds']) || (data.focusSeconds is int && data.focusSeconds >= 0))
+      && (!data.keys().hasAny(['focusLog']) || data.focusLog is map)
       && data.createdAt is timestamp
       && (data.completedAt == null || data.completedAt is timestamp)
       && data.userId is string;

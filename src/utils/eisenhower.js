@@ -12,26 +12,26 @@ const IMPORTANT_DEADLINE_WINDOW_MS = 24 * 60 * 60 * 1000
 export const EISENHOWER_QUADRANTS = [
   {
     key: 'do',
-    title: 'Làm ngay',
-    description: 'Quan trọng và khẩn cấp',
+    title: 'Quan trọng và khẩn cấp',
+    description: 'Cần xử lý ngay',
     tone: 'bg-peach text-rose-950',
   },
   {
     key: 'schedule',
-    title: 'Lên lịch',
-    description: 'Quan trọng nhưng chưa khẩn cấp',
+    title: 'Quan trọng nhưng không khẩn cấp',
+    description: 'Cần lên lịch làm đúng hạn',
     tone: 'bg-lavender text-violet-950',
   },
   {
     key: 'delegate',
-    title: 'Xử lý nhanh',
-    description: 'Khẩn cấp nhưng ít quan trọng',
+    title: 'Khẩn cấp nhưng không quan trọng',
+    description: 'Cần xử lý nhanh hoặc ủy quyền',
     tone: 'bg-butter text-amber-950',
   },
   {
     key: 'reduce',
-    title: 'Giảm bớt',
-    description: 'Chưa khẩn cấp và ít quan trọng',
+    title: 'Không quan trọng và không khẩn cấp',
+    description: 'Nên giảm bớt hoặc làm sau',
     tone: 'bg-sky text-sky-950',
   },
 ]

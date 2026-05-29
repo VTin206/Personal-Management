@@ -10,15 +10,19 @@ import {
   Eye,
   EyeOff,
   Gauge,
+  Headphones,
   Home,
+  Link2,
   Palette,
   Maximize2,
   Music,
   Pause,
   Play,
+  Radio,
   RotateCcw,
   Settings2,
   Sparkles,
+  Square,
   Target,
   Timer,
   X,
@@ -569,7 +573,6 @@ function FocusMusicPlayer({ theme }) {
     }
   })
   const hasMusic = Boolean(music.embedUrl)
-  const shouldRenderPanel = open || hasMusic
 
   function updateSourceUrl(sourceUrl) {
     setMusic((current) => ({ ...current, error: '', sourceUrl }))
@@ -596,6 +599,7 @@ function FocusMusicPlayer({ theme }) {
   function clearMusic() {
     storeFocusMusicUrl('')
     setMusic({ embedUrl: '', error: '', sourceUrl: '' })
+    setOpen(false)
   }
 
   return (
@@ -617,21 +621,67 @@ function FocusMusicPlayer({ theme }) {
         <Music />
       </Button>
 
+      {hasMusic ? (
+        <iframe
+          key={music.embedUrl}
+          title="Nhạc nền YouTube"
+          src={music.embedUrl}
+          className="pointer-events-none fixed bottom-2 right-2 h-px w-px opacity-0"
+          allow="autoplay; encrypted-media; picture-in-picture"
+          referrerPolicy="strict-origin-when-cross-origin"
+        />
+      ) : null}
+
       <AnimatePresence>
-        {shouldRenderPanel ? (
+        {open ? (
           <motion.div
             className={cn(
-              'absolute right-0 top-12 z-30 w-[min(calc(100vw-2rem),24rem)] rounded-lg border border-white/18 bg-black/78 p-3 text-left shadow-[0_16px_48px_rgba(0,0,0,0.38)] backdrop-blur',
-              !open && 'pointer-events-none fixed -bottom-6 right-4 top-auto h-px w-px overflow-hidden border-0 p-0 opacity-0',
+              'absolute right-0 top-12 z-30 w-[min(calc(100vw-2rem),28rem)] overflow-hidden rounded-lg border border-white/18 bg-slate-950/88 text-left text-white shadow-[0_20px_70px_rgba(0,0,0,0.46)] backdrop-blur-xl',
             )}
             initial={false}
-            animate={open ? { opacity: 1, y: 0, scale: 1 } : { opacity: 0, y: -6, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -6, scale: 0.98 }}
             transition={{ duration: 0.16 }}
           >
-            <form className="grid gap-3" onSubmit={playMusic}>
+            <div className="border-b border-white/12 bg-white/8 p-4">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex min-w-0 items-center gap-3">
+                  <span className="flex size-11 shrink-0 items-center justify-center rounded-lg border border-white/16 bg-white/12">
+                    <Headphones className="size-5" />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-sm font-black">Nhạc nền</p>
+                    <p className="mt-1 truncate text-xs font-semibold text-white/62">
+                      {hasMusic ? 'Đang phát nguồn YouTube đã lưu' : 'Dán video hoặc playlist YouTube'}
+                    </p>
+                  </div>
+                </div>
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-white/14 bg-black/24 px-3 py-1 text-xs font-bold text-white/70">
+                  <span className={cn('size-2 rounded-full', hasMusic ? 'bg-mint' : 'bg-white/30')} />
+                  {hasMusic ? 'Đang phát' : 'Chờ'}
+                </span>
+              </div>
+              <div className="mt-4 grid grid-cols-12 items-end gap-1.5 rounded-lg border border-white/12 bg-black/24 p-3">
+                {Array.from({ length: 24 }, (_, index) => (
+                  <span
+                    aria-hidden="true"
+                    className={cn(
+                      'col-span-1 rounded-full bg-white/18 transition-all',
+                      hasMusic && 'bg-sky/85 shadow-[0_0_16px_rgba(125,211,252,0.28)]',
+                    )}
+                    key={index}
+                    style={{ height: `${12 + ((index * 7) % 28)}px` }}
+                  />
+                ))}
+              </div>
+            </div>
+
+            <form className="grid gap-3 p-4" onSubmit={playMusic}>
               <div className="flex items-center justify-between gap-3">
-                <p className="text-sm font-bold text-white">Nhạc nền</p>
+                <p className="inline-flex items-center gap-2 text-xs font-black uppercase text-white/68">
+                  <Radio className="size-4" />
+                  Nguồn phát
+                </p>
                 <div className="flex items-center gap-2">
                   {hasMusic ? (
                     <>
@@ -655,20 +705,23 @@ function FocusMusicPlayer({ theme }) {
                         className="size-8 border-white/20 bg-white/10 text-white shadow-none hover:bg-white hover:text-slate-950"
                         onClick={clearMusic}
                       >
-                        <X />
+                        <Square />
                       </Button>
                     </>
                   ) : null}
                 </div>
               </div>
-              <div className="flex gap-2">
+              <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+                <div className="relative">
+                  <Link2 className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500" />
                 <Input
                   aria-label="Link YouTube"
                   placeholder="https://youtube.com/watch?v=..."
                   value={music.sourceUrl}
-                  className="h-10 border-white/18 bg-white text-slate-950 placeholder:text-slate-500"
+                  className="h-10 border-white/18 bg-white pl-9 text-slate-950 placeholder:text-slate-500"
                   onChange={(event) => updateSourceUrl(event.target.value)}
                 />
+                </div>
                 <Button type="submit" className="h-10 px-3">
                   <Play />
                   Phát
@@ -677,18 +730,6 @@ function FocusMusicPlayer({ theme }) {
               {music.error ? <p className="text-xs font-semibold text-rose-100">{music.error}</p> : null}
             </form>
 
-            {hasMusic ? (
-              <div className="mt-3 overflow-hidden rounded-lg border border-white/12 bg-black">
-                <iframe
-                  key={music.embedUrl}
-                  title="Nhạc nền YouTube"
-                  src={music.embedUrl}
-                  className="h-24 w-full"
-                  allow="autoplay; encrypted-media; picture-in-picture"
-                  referrerPolicy="strict-origin-when-cross-origin"
-                />
-              </div>
-            ) : null}
           </motion.div>
         ) : null}
       </AnimatePresence>
@@ -782,7 +823,7 @@ export function FocusTaskPage() {
 
   const consumeElapsedFocusSeconds = useCallback((nowMs = Date.now()) => {
     const anchor = timerAnchorRef.current
-    if (!anchor || anchor.mode !== 'focus') return 0
+    if (!anchor) return 0
 
     const saveFrom = anchor.lastSavedAt ?? anchor.startedAt
     const sessionEnd = anchor.startedAt + anchor.secondsAtStart * 1000

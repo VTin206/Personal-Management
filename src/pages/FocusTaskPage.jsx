@@ -25,6 +25,8 @@ import {
   Square,
   Target,
   Timer,
+  Volume2,
+  VolumeX,
   X,
 } from 'lucide-react'
 
@@ -316,6 +318,7 @@ function getTimerAnchorSecondsLeft(anchor, now = Date.now()) {
 }
 
 const FOCUS_MUSIC_STORAGE_KEY = 'pastel-focus-music-url'
+const FOCUS_MUSIC_VOLUME_KEY = 'pastel-focus-music-volume'
 const YOUTUBE_ID_PATTERN = /^[A-Za-z0-9_-]+$/
 const activeSounds = new Set()
 
@@ -336,9 +339,17 @@ function isYouTubeHost(hostname) {
   )
 }
 
-function createYouTubeEmbedUrl(rawUrl) {
+function getYouTubeEmbedOrigin() {
+  try {
+    return window.location.origin
+  } catch {
+    return ''
+  }
+}
+
+function getYouTubeSourceInfo(rawUrl) {
   const trimmedUrl = rawUrl.trim()
-  if (!trimmedUrl) return ''
+  if (!trimmedUrl) return null
 
   const urlWithProtocol = /^(https?:)?\/\//i.test(trimmedUrl) ? trimmedUrl : `https://${trimmedUrl}`
   let url
@@ -346,10 +357,10 @@ function createYouTubeEmbedUrl(rawUrl) {
   try {
     url = new URL(urlWithProtocol)
   } catch {
-    return ''
+    return null
   }
 
-  if (!isYouTubeHost(url.hostname)) return ''
+  if (!isYouTubeHost(url.hostname)) return null
 
   const normalizedHostname = url.hostname.toLowerCase().replace(/^www\./, '').replace(/^m\./, '')
   const pathSegments = url.pathname.split('/').filter(Boolean)
@@ -364,11 +375,29 @@ function createYouTubeEmbedUrl(rawUrl) {
     videoId = sanitizeYouTubeId(pathSegments[1])
   }
 
+  if (!videoId && !playlistId) return null
+
+  return {
+    playlistId,
+    thumbnailUrl: videoId ? `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg` : '',
+    videoId,
+  }
+}
+
+function createYouTubeEmbedUrl(rawUrl) {
+  const sourceInfo = getYouTubeSourceInfo(rawUrl)
+  if (!sourceInfo) return ''
+
+  const { playlistId, videoId } = sourceInfo
+  const origin = getYouTubeEmbedOrigin()
+
   if (videoId) {
     const embedUrl = new URL(`https://www.youtube.com/embed/${videoId}`)
     embedUrl.searchParams.set('autoplay', '1')
+    embedUrl.searchParams.set('enablejsapi', '1')
     embedUrl.searchParams.set('rel', '0')
     embedUrl.searchParams.set('playsinline', '1')
+    if (origin) embedUrl.searchParams.set('origin', origin)
     if (playlistId) embedUrl.searchParams.set('list', playlistId)
     return embedUrl.toString()
   }
@@ -377,12 +406,24 @@ function createYouTubeEmbedUrl(rawUrl) {
     const embedUrl = new URL('https://www.youtube.com/embed/videoseries')
     embedUrl.searchParams.set('list', playlistId)
     embedUrl.searchParams.set('autoplay', '1')
+    embedUrl.searchParams.set('enablejsapi', '1')
     embedUrl.searchParams.set('rel', '0')
     embedUrl.searchParams.set('playsinline', '1')
+    if (origin) embedUrl.searchParams.set('origin', origin)
     return embedUrl.toString()
   }
 
   return ''
+}
+
+function getStoredFocusMusicVolume() {
+  try {
+    const storedVolume = Number(window.localStorage.getItem(FOCUS_MUSIC_VOLUME_KEY))
+    if (!Number.isFinite(storedVolume)) return 70
+    return Math.min(100, Math.max(0, Math.round(storedVolume)))
+  } catch {
+    return 70
+  }
 }
 
 function getStoredFocusMusicUrl() {
@@ -410,7 +451,15 @@ function storeFocusMusicUrl(url) {
       window.localStorage.removeItem(FOCUS_MUSIC_STORAGE_KEY)
     }
   } catch {
-    // Local storage can be blocked in private browsing contexts.
+    // Local storage có thể bị chặn ở một số trình duyệt.
+  }
+}
+
+function storeFocusMusicVolume(volume) {
+  try {
+    window.localStorage.setItem(FOCUS_MUSIC_VOLUME_KEY, String(volume))
+  } catch {
+    // Local storage có thể bị chặn ở một số trình duyệt.
   }
 }
 
@@ -418,7 +467,7 @@ function storeFocusThemeKey(themeKey) {
   try {
     window.localStorage.setItem(FOCUS_THEME_STORAGE_KEY, themeKey)
   } catch {
-    // Local storage can be blocked in private browsing contexts.
+    // Local storage có thể bị chặn ở một số trình duyệt.
   }
 }
 
@@ -435,7 +484,7 @@ function playSound(src, volume = 0.5) {
     const playPromise = audio.play()
     if (playPromise?.catch) playPromise.catch(cleanUp)
   } catch {
-    // Browser autoplay rules can reject sound; timer behavior should continue.
+    // Trình duyệt có thể chặn âm thanh tự phát, bộ đếm vẫn tiếp tục chạy.
   }
 }
 
@@ -561,18 +610,42 @@ function FocusIconButton({ label, icon: Icon, onClick, asChild = false, children
   )
 }
 
-function FocusMusicPlayer({ theme }) {
-  const [open, setOpen] = useState(false)
-  const [music, setMusic] = useState(() => {
-    const sourceUrl = getStoredFocusMusicUrl()
+function createFocusMusicState(sourceUrl) {
+  const sourceInfo = getYouTubeSourceInfo(sourceUrl)
+  const embedUrl = sourceInfo ? createYouTubeEmbedUrl(sourceUrl) : ''
 
-    return {
-      embedUrl: createYouTubeEmbedUrl(sourceUrl),
-      error: '',
-      sourceUrl,
-    }
-  })
+  return {
+    embedUrl,
+    error: '',
+    playlistId: sourceInfo?.playlistId ?? '',
+    sourceUrl,
+    thumbnailUrl: sourceInfo?.thumbnailUrl ?? '',
+    videoId: sourceInfo?.videoId ?? '',
+  }
+}
+
+function sendYouTubeCommand(frameRef, command, args = []) {
+  const frameWindow = frameRef.current?.contentWindow
+  if (!frameWindow) return
+
+  frameWindow.postMessage(JSON.stringify({ event: 'command', func: command, args }), '*')
+}
+
+function FocusMusicPlayer({ theme }) {
+  const playerFrameRef = useRef(null)
+  const [open, setOpen] = useState(false)
+  const [playing, setPlaying] = useState(() => Boolean(createYouTubeEmbedUrl(getStoredFocusMusicUrl())))
+  const [volume, setVolume] = useState(() => getStoredFocusMusicVolume())
+  const [music, setMusic] = useState(() => createFocusMusicState(getStoredFocusMusicUrl()))
   const hasMusic = Boolean(music.embedUrl)
+  const muted = volume <= 0
+
+  useEffect(() => {
+    if (!hasMusic) return
+
+    sendYouTubeCommand(playerFrameRef, 'setVolume', [volume])
+    sendYouTubeCommand(playerFrameRef, playing ? 'playVideo' : 'pauseVideo')
+  }, [hasMusic, playing, volume])
 
   function updateSourceUrl(sourceUrl) {
     setMusic((current) => ({ ...current, error: '', sourceUrl }))
@@ -592,14 +665,33 @@ function FocusMusicPlayer({ theme }) {
     }
 
     storeFocusMusicUrl(music.sourceUrl)
-    setMusic((current) => ({ ...current, embedUrl, error: '' }))
+    setMusic(createFocusMusicState(music.sourceUrl))
+    setPlaying(true)
     setOpen(true)
   }
 
   function clearMusic() {
     storeFocusMusicUrl('')
-    setMusic({ embedUrl: '', error: '', sourceUrl: '' })
+    setMusic(createFocusMusicState(''))
+    setPlaying(false)
     setOpen(false)
+  }
+
+  function togglePlaying() {
+    if (!hasMusic) return
+
+    setPlaying((current) => !current)
+  }
+
+  function changeVolume(nextVolume) {
+    const normalizedVolume = Math.min(100, Math.max(0, Math.round(Number(nextVolume) || 0)))
+
+    setVolume(normalizedVolume)
+    storeFocusMusicVolume(normalizedVolume)
+  }
+
+  function toggleMute() {
+    changeVolume(muted ? 70 : 0)
   }
 
   return (
@@ -623,11 +715,16 @@ function FocusMusicPlayer({ theme }) {
 
       {hasMusic ? (
         <iframe
+          ref={playerFrameRef}
           key={music.embedUrl}
           title="Nhạc nền YouTube"
           src={music.embedUrl}
           className="pointer-events-none fixed bottom-2 right-2 h-px w-px opacity-0"
           allow="autoplay; encrypted-media; picture-in-picture"
+          onLoad={() => {
+            sendYouTubeCommand(playerFrameRef, 'setVolume', [volume])
+            sendYouTubeCommand(playerFrameRef, playing ? 'playVideo' : 'pauseVideo')
+          }}
           referrerPolicy="strict-origin-when-cross-origin"
         />
       ) : null}
@@ -646,33 +743,50 @@ function FocusMusicPlayer({ theme }) {
             <div className="border-b border-white/12 bg-white/8 p-4">
               <div className="flex items-center justify-between gap-4">
                 <div className="flex min-w-0 items-center gap-3">
-                  <span className="flex size-11 shrink-0 items-center justify-center rounded-lg border border-white/16 bg-white/12">
-                    <Headphones className="size-5" />
+                  <span className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-white/16 bg-white/12">
+                    {music.thumbnailUrl ? (
+                      <img src={music.thumbnailUrl} alt="" className="size-full object-cover" referrerPolicy="no-referrer" />
+                    ) : (
+                      <Headphones className="size-5" />
+                    )}
                   </span>
                   <div className="min-w-0">
                     <p className="text-sm font-black">Nhạc nền</p>
                     <p className="mt-1 truncate text-xs font-semibold text-white/62">
-                      {hasMusic ? 'Đang phát nguồn YouTube đã lưu' : 'Dán video hoặc playlist YouTube'}
+                      {hasMusic ? (playing ? 'Đang phát nguồn YouTube đã lưu' : 'Đã tạm dừng nguồn YouTube') : 'Dán video hoặc playlist YouTube'}
                     </p>
                   </div>
                 </div>
                 <span className="inline-flex items-center gap-1.5 rounded-full border border-white/14 bg-black/24 px-3 py-1 text-xs font-bold text-white/70">
-                  <span className={cn('size-2 rounded-full', hasMusic ? 'bg-mint' : 'bg-white/30')} />
-                  {hasMusic ? 'Đang phát' : 'Chờ'}
+                  <span className={cn('size-2 rounded-full', playing ? 'bg-mint' : 'bg-white/30')} />
+                  {hasMusic ? (playing ? 'Đang phát' : 'Tạm dừng') : 'Chờ'}
                 </span>
               </div>
               <div className="mt-4 grid grid-cols-12 items-end gap-1.5 rounded-lg border border-white/12 bg-black/24 p-3">
-                {Array.from({ length: 24 }, (_, index) => (
-                  <span
+                {Array.from({ length: 24 }, (_, index) => {
+                  const idleHeight = 12 + ((index * 7) % 28)
+                  const activeHeight = 16 + ((index * 11) % 34)
+
+                  return (
+                    <motion.span
                     aria-hidden="true"
                     className={cn(
                       'col-span-1 rounded-full bg-white/18 transition-all',
-                      hasMusic && 'bg-sky/85 shadow-[0_0_16px_rgba(125,211,252,0.28)]',
+                      playing && 'bg-sky/85 shadow-[0_0_16px_rgba(125,211,252,0.28)]',
                     )}
                     key={index}
-                    style={{ height: `${12 + ((index * 7) % 28)}px` }}
-                  />
-                ))}
+                      animate={{
+                        height: playing ? [`${idleHeight}px`, `${activeHeight}px`, `${idleHeight + 8}px`] : `${idleHeight}px`,
+                        opacity: playing ? [0.66, 1, 0.76] : 0.48,
+                      }}
+                      transition={{
+                        duration: 0.9 + (index % 5) * 0.12,
+                        repeat: playing ? Number.POSITIVE_INFINITY : 0,
+                        repeatType: 'mirror',
+                      }}
+                    />
+                  )
+                })}
               </div>
             </div>
 
@@ -714,18 +828,56 @@ function FocusMusicPlayer({ theme }) {
               <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
                 <div className="relative">
                   <Link2 className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500" />
-                <Input
-                  aria-label="Link YouTube"
-                  placeholder="https://youtube.com/watch?v=..."
-                  value={music.sourceUrl}
-                  className="h-10 border-white/18 bg-white pl-9 text-slate-950 placeholder:text-slate-500"
-                  onChange={(event) => updateSourceUrl(event.target.value)}
-                />
+                  <Input
+                    aria-label="Link YouTube"
+                    placeholder="https://youtube.com/watch?v=..."
+                    value={music.sourceUrl}
+                    className="h-10 border-white/18 bg-white pl-9 text-slate-950 placeholder:text-slate-500"
+                    onChange={(event) => updateSourceUrl(event.target.value)}
+                  />
                 </div>
                 <Button type="submit" className="h-10 px-3">
                   <Play />
                   Phát
                 </Button>
+              </div>
+              <div className="grid gap-3 rounded-lg border border-white/12 bg-white/8 p-3">
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="border-white/20 bg-white/10 text-white shadow-none hover:bg-white hover:text-slate-950"
+                    disabled={!hasMusic}
+                    onClick={togglePlaying}
+                  >
+                    {playing ? <Pause /> : <Play />}
+                    {playing ? 'Tạm dừng' : 'Phát lại'}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    title={muted ? 'Bật tiếng' : 'Tắt tiếng'}
+                    aria-label={muted ? 'Bật tiếng' : 'Tắt tiếng'}
+                    className="size-9 border-white/20 bg-white/10 text-white shadow-none hover:bg-white hover:text-slate-950"
+                    disabled={!hasMusic}
+                    onClick={toggleMute}
+                  >
+                    {muted ? <VolumeX /> : <Volume2 />}
+                  </Button>
+                  <span className="ml-auto text-xs font-black text-white/62">{volume}%</span>
+                </div>
+                <input
+                  aria-label="Âm lượng nhạc nền"
+                  className="h-2 w-full cursor-pointer accent-sky disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={!hasMusic}
+                  max="100"
+                  min="0"
+                  type="range"
+                  value={volume}
+                  onChange={(event) => changeVolume(event.target.value)}
+                />
               </div>
               {music.error ? <p className="text-xs font-semibold text-rose-100">{music.error}</p> : null}
             </form>

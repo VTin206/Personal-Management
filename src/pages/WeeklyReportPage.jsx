@@ -27,6 +27,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
+import { useNow } from '@/hooks/useNow'
 import { useTasks } from '@/hooks/useTasks'
 import { cn } from '@/utils/cn'
 import {
@@ -191,9 +192,25 @@ function sortByRange(tasks) {
   })
 }
 
-function getCalendarStyle(task) {
-  const quadrantKey = getEisenhowerQuadrantKey(task)
+function getCalendarStyle(task, now) {
+  const quadrantKey = getEisenhowerQuadrantKey(task, now)
   return QUADRANT_CALENDAR_STYLES[quadrantKey] ?? QUADRANT_CALENDAR_STYLES.reduce
+}
+
+function buildCalendarTaskLanes(tasks) {
+  const laneEndTimes = []
+  const lanesByTaskId = new Map()
+
+  sortByRange(tasks).forEach((task) => {
+    const range = getTaskRange(task)
+    const laneIndex = laneEndTimes.findIndex((endTime) => endTime < range.start.getTime())
+    const nextLaneIndex = laneIndex === -1 ? laneEndTimes.length : laneIndex
+
+    laneEndTimes[nextLaneIndex] = range.end.getTime()
+    lanesByTaskId.set(task.id, nextLaneIndex)
+  })
+
+  return lanesByTaskId
 }
 
 function isRangeStartInCell(task, day) {
@@ -223,8 +240,8 @@ function QuadrantLegend() {
   )
 }
 
-function CalendarRangeBar({ task, day, onOpen }) {
-  const style = getCalendarStyle(task)
+function CalendarRangeBar({ task, day, now, onOpen }) {
+  const style = getCalendarStyle(task, now)
   const showLabel = shouldShowRangeLabel(task, day)
   const startsInCell = isRangeStartInCell(task, day)
   const endsInCell = isRangeEndInCell(task, day)
@@ -249,7 +266,7 @@ function CalendarRangeBar({ task, day, onOpen }) {
   )
 }
 
-function CalendarHoverCard({ tasks, alignRight, onOpen }) {
+function CalendarHoverCard({ tasks, alignRight, now, onOpen }) {
   if (tasks.length === 0) return null
 
   return (
@@ -262,7 +279,7 @@ function CalendarHoverCard({ tasks, alignRight, onOpen }) {
       <p className="mb-2 text-xs font-bold uppercase text-muted-foreground">Task trong ngày</p>
       <div className="grid gap-1.5">
         {tasks.map((task) => {
-          const style = getCalendarStyle(task)
+          const style = getCalendarStyle(task, now)
 
           return (
             <button
@@ -293,8 +310,11 @@ function CalendarDayCell({
   cellIndex,
   day,
   dayTasks,
+  dayRows,
   dueCount,
+  overflowCount,
   isCurrentMonth,
+  now,
   selected,
   alignTooltipRight,
   onSelect,
@@ -327,20 +347,24 @@ function CalendarDayCell({
         ) : null}
       </div>
       <div className="mt-2 grid gap-1">
-        {dayTasks.slice(0, 4).map((task) => (
-          <CalendarRangeBar task={task} day={day} key={task.id} onOpen={onOpenTask} />
+        {dayRows.map((task, rowIndex) => (
+          task ? (
+            <CalendarRangeBar task={task} day={day} key={task.id} now={now} onOpen={onOpenTask} />
+          ) : (
+            <span aria-hidden="true" className="h-5" key={`empty-${rowIndex}`} />
+          )
         ))}
-        {dayTasks.length > 4 ? (
-          <span className="text-[10px] font-bold text-muted-foreground">+{dayTasks.length - 4}</span>
+        {overflowCount > 0 ? (
+          <span className="text-[10px] font-bold text-muted-foreground">+{overflowCount}</span>
         ) : null}
       </div>
-      <CalendarHoverCard tasks={dayTasks} alignRight={alignTooltipRight} onOpen={onOpenTask} />
+      <CalendarHoverCard tasks={dayTasks} alignRight={alignTooltipRight} now={now} onOpen={onOpenTask} />
     </div>
   )
 }
 
-function TaskTimelineItem({ task, onOpen }) {
-  const style = getCalendarStyle(task)
+function TaskTimelineItem({ task, now, onOpen }) {
+  const style = getCalendarStyle(task, now)
 
   return (
     <li className="rounded-lg border bg-card-soft p-3">
@@ -370,6 +394,7 @@ function TaskTimelineItem({ task, onOpen }) {
 export function WeeklyReportPage() {
   const navigate = useNavigate()
   const { tasks, loading, error } = useTasks()
+  const now = useNow()
   const [monthDate, setMonthDate] = useState(() => startOfMonth(new Date()))
   const [selectedDate, setSelectedDate] = useState(() => startOfDay(new Date()))
   const weeklyData = getWeeklyChartData(tasks)
@@ -381,6 +406,7 @@ export function WeeklyReportPage() {
     () => sortByRange(tasks.filter((task) => taskOverlapsMonth(task, monthDate))),
     [monthDate, tasks],
   )
+  const calendarTaskLanes = useMemo(() => buildCalendarTaskLanes(monthTasks), [monthTasks])
   const selectedDayTasks = useMemo(
     () => sortByRange(monthTasks.filter((task) => taskCoversDay(task, selectedDate))),
     [monthTasks, selectedDate],
@@ -533,6 +559,10 @@ export function WeeklyReportPage() {
                   <div className="grid grid-cols-7">
                     {calendarDays.map((day, index) => {
                       const dayTasks = monthTasks.filter((task) => taskCoversDay(task, day))
+                      const dayRows = Array.from({ length: 4 }, (_, laneIndex) => (
+                        dayTasks.find((task) => calendarTaskLanes.get(task.id) === laneIndex) ?? null
+                      ))
+                      const overflowCount = dayTasks.filter((task) => (calendarTaskLanes.get(task.id) ?? 0) >= 4).length
                       const dueCount = dayTasks.filter((task) => isSameDay(getTaskDueDateTime(task), day)).length
                       const isCurrentMonth = day.getMonth() === monthDate.getMonth()
                       const selected = isSameDay(day, selectedDate)
@@ -542,8 +572,11 @@ export function WeeklyReportPage() {
                           cellIndex={index}
                           day={day}
                           dayTasks={dayTasks}
+                          dayRows={dayRows}
                           dueCount={dueCount}
+                          overflowCount={overflowCount}
                           isCurrentMonth={isCurrentMonth}
+                          now={now}
                           key={day.toISOString()}
                           selected={selected}
                           alignTooltipRight={index % 7 >= 4}
@@ -594,7 +627,7 @@ export function WeeklyReportPage() {
                   ) : (
                     <ul className="grid gap-2">
                       {selectedDayTasks.map((task) => (
-                        <TaskTimelineItem task={task} key={task.id} onOpen={openTask} />
+                        <TaskTimelineItem task={task} key={task.id} now={now} onOpen={openTask} />
                       ))}
                     </ul>
                   )}
@@ -614,7 +647,7 @@ export function WeeklyReportPage() {
                   ) : (
                     <ul className="grid max-h-[420px] gap-2 overflow-y-auto pr-1">
                       {monthTasks.map((task) => (
-                        <TaskTimelineItem task={task} key={task.id} onOpen={openTask} />
+                        <TaskTimelineItem task={task} key={task.id} now={now} onOpen={openTask} />
                       ))}
                     </ul>
                   )}

@@ -7,6 +7,8 @@ const PRIORITY_SCORE = {
   low: 1,
 }
 
+const IMPORTANT_DEADLINE_WINDOW_MS = 24 * 60 * 60 * 1000
+
 export const EISENHOWER_QUADRANTS = [
   {
     key: 'do',
@@ -34,22 +36,39 @@ export const EISENHOWER_QUADRANTS = [
   },
 ]
 
-export function isImportantTask(task) {
-  return task.priority === 'high'
+function normalizeNow(value) {
+  return value instanceof Date ? value : new Date()
 }
 
-export function isUrgentTask(task) {
-  if (!isActiveWorkTask(task)) return false
+function getRemainingDeadlineMs(task, now = new Date()) {
+  const dueDateTime = getTaskDueDateTime(task)
+  if (!dueDateTime) return Number.POSITIVE_INFINITY
+
+  return dueDateTime.getTime() - normalizeNow(now).getTime()
+}
+
+export function isImportantTask(task, now = new Date()) {
+  if (task.priority === 'high') return true
+  if (task.status === 'completed') return false
+
+  return getRemainingDeadlineMs(task, now) <= IMPORTANT_DEADLINE_WINDOW_MS
+}
+
+export function isUrgentTask(task, now = new Date()) {
+  if (task.status === 'completed') return false
+
+  const currentTime = normalizeNow(now)
 
   const dueDateTime = getTaskDueDateTime(task)
   if (!dueDateTime) return false
 
-  return dueDateTime.getTime() <= addDays(new Date(), 2).getTime()
+  return dueDateTime.getTime() <= addDays(currentTime, 2).getTime()
 }
 
-export function getEisenhowerQuadrantKey(task) {
-  const important = isImportantTask(task)
-  const urgent = isUrgentTask(task)
+export function getEisenhowerQuadrantKey(task, now = new Date()) {
+  const currentTime = normalizeNow(now)
+  const important = isImportantTask(task, currentTime)
+  const urgent = isUrgentTask(task, currentTime)
 
   if (important && urgent) return 'do'
   if (important) return 'schedule'
@@ -57,12 +76,14 @@ export function getEisenhowerQuadrantKey(task) {
   return 'reduce'
 }
 
-export function groupTasksByEisenhower(tasks) {
+export function groupTasksByEisenhower(tasks, now = new Date()) {
+  const currentTime = normalizeNow(now)
+
   return tasks.reduce(
     (groups, task) => {
-      if (!isActiveWorkTask(task)) return groups
+      if (!isActiveWorkTask(task, currentTime)) return groups
 
-      groups[getEisenhowerQuadrantKey(task)].push(task)
+      groups[getEisenhowerQuadrantKey(task, currentTime)].push(task)
       return groups
     },
     {

@@ -8,21 +8,25 @@ import {
 
 const URGENT_DEADLINE_WINDOW_MS = 24 * 60 * 60 * 1000
 
-export function isTaskOverdue(task) {
-  if (task.status === 'completed') return false
-
-  return isDueDateOverdue(task.dueDate, task.dueTime)
+function normalizeNow(value) {
+  return value instanceof Date ? value : new Date()
 }
 
-export function isDueDateOverdue(dueDateValue, dueTimeValue) {
+export function isTaskOverdue(task, now = new Date()) {
+  if (task.status === 'completed') return false
+
+  return isDueDateOverdue(task.dueDate, task.dueTime, now)
+}
+
+export function isDueDateOverdue(dueDateValue, dueTimeValue, now = new Date()) {
   const dueDateTime = getTaskDueDateTime({ dueDate: dueDateValue, dueTime: dueTimeValue })
   if (!dueDateTime) return false
 
-  return dueDateTime.getTime() < Date.now()
+  return dueDateTime.getTime() < normalizeNow(now).getTime()
 }
 
-export function canCompleteTask(task) {
-  return !isDueDateOverdue(task.dueDate, task.dueTime)
+export function canCompleteTask(task, now = new Date()) {
+  return !isDueDateOverdue(task.dueDate, task.dueTime, now)
 }
 
 export function canCompleteTaskWithUpdates(task, updates) {
@@ -35,26 +39,30 @@ export function canCompleteTaskWithUpdates(task, updates) {
   return canCompleteTask(updatedTask)
 }
 
-export function isActiveWorkTask(task) {
-  return task.status !== 'completed' && !isDueDateOverdue(task.dueDate, task.dueTime)
+export function isActiveWorkTask(task, now = new Date()) {
+  return task.status !== 'completed' && !isDueDateOverdue(task.dueDate, task.dueTime, now)
 }
 
-export function isUpcomingTask(task) {
-  if (!isActiveWorkTask(task)) return false
+export function isUpcomingTask(task, now = new Date()) {
+  const currentTime = normalizeNow(now)
+
+  if (!isActiveWorkTask(task, currentTime)) return false
 
   const dueDateTime = getTaskDueDateTime(task)
   if (!dueDateTime) return false
 
-  return dueDateTime.getTime() >= Date.now()
+  return dueDateTime.getTime() >= currentTime.getTime()
 }
 
 export function isTaskDueWithin24Hours(task, now = new Date()) {
-  if (!isActiveWorkTask(task)) return false
+  const currentTime = normalizeNow(now)
+
+  if (!isActiveWorkTask(task, currentTime)) return false
 
   const dueDateTime = getTaskDueDateTime(task)
   if (!dueDateTime) return false
 
-  const remainingMs = dueDateTime.getTime() - now.getTime()
+  const remainingMs = dueDateTime.getTime() - currentTime.getTime()
   return remainingMs >= 0 && remainingMs <= URGENT_DEADLINE_WINDOW_MS
 }
 
@@ -62,7 +70,7 @@ export function getTaskRemainingTimeLabel(task, now = new Date()) {
   const dueDateTime = getTaskDueDateTime(task)
   if (!dueDateTime) return 'Chưa có hạn'
 
-  const remainingMinutes = Math.max(0, Math.ceil((dueDateTime.getTime() - now.getTime()) / 60000))
+  const remainingMinutes = Math.max(0, Math.ceil((dueDateTime.getTime() - normalizeNow(now).getTime()) / 60000))
   const hours = Math.floor(remainingMinutes / 60)
   const minutes = remainingMinutes % 60
 

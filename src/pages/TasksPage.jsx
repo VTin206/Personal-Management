@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { useTasks } from '@/hooks/useTasks'
+import { useNow } from '@/hooks/useNow'
 import { formatTaskDueDateTime } from '@/utils/date'
 import {
   EISENHOWER_QUADRANTS,
@@ -75,12 +76,13 @@ function EisenhowerCard({ quadrant, tasks, onFocus }) {
 export function TasksPage() {
   const navigate = useNavigate()
   const { tasks, loading, error, updateTask, deleteTask } = useTasks()
+  const now = useNow()
   const [editingTask, setEditingTask] = useState(null)
   const [submitting, setSubmitting] = useState(false)
   const [actionError, setActionError] = useState('')
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
-  const activeTasks = useMemo(() => tasks.filter(isActiveWorkTask), [tasks])
+  const activeTasks = useMemo(() => tasks.filter((task) => isActiveWorkTask(task, now)), [now, tasks])
 
   const filteredTasks = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase()
@@ -102,8 +104,8 @@ export function TasksPage() {
   )
 
   const eisenhowerGroups = useMemo(
-    () => groupTasksByEisenhower(filteredTasks),
-    [filteredTasks],
+    () => groupTasksByEisenhower(filteredTasks, now),
+    [filteredTasks, now],
   )
 
   async function handleSubmit(payload) {

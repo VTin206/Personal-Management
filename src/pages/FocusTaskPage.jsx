@@ -639,6 +639,7 @@ function FocusMusicPlayer({ theme }) {
   const [music, setMusic] = useState(() => createFocusMusicState(getStoredFocusMusicUrl()))
   const hasMusic = Boolean(music.embedUrl)
   const muted = volume <= 0
+  const shouldRenderPanel = open || hasMusic
 
   useEffect(() => {
     if (!hasMusic) return
@@ -713,30 +714,15 @@ function FocusMusicPlayer({ theme }) {
         <Music />
       </Button>
 
-      {hasMusic ? (
-        <iframe
-          ref={playerFrameRef}
-          key={music.embedUrl}
-          title="Nhạc nền YouTube"
-          src={music.embedUrl}
-          className="pointer-events-none fixed bottom-2 right-2 h-px w-px opacity-0"
-          allow="autoplay; encrypted-media; picture-in-picture"
-          onLoad={() => {
-            sendYouTubeCommand(playerFrameRef, 'setVolume', [volume])
-            sendYouTubeCommand(playerFrameRef, playing ? 'playVideo' : 'pauseVideo')
-          }}
-          referrerPolicy="strict-origin-when-cross-origin"
-        />
-      ) : null}
-
       <AnimatePresence>
-        {open ? (
+        {shouldRenderPanel ? (
           <motion.div
             className={cn(
               'absolute right-0 top-12 z-30 w-[min(calc(100vw-2rem),28rem)] overflow-hidden rounded-lg border border-white/18 bg-slate-950/88 text-left text-white shadow-[0_20px_70px_rgba(0,0,0,0.46)] backdrop-blur-xl',
+              !open && 'pointer-events-none fixed -bottom-6 right-4 top-auto h-px w-px border-0 opacity-0',
             )}
             initial={false}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
+            animate={open ? { opacity: 1, y: 0, scale: 1 } : { opacity: 0, y: -6, scale: 0.98 }}
             exit={{ opacity: 0, y: -6, scale: 0.98 }}
             transition={{ duration: 0.16 }}
           >
@@ -762,32 +748,27 @@ function FocusMusicPlayer({ theme }) {
                   {hasMusic ? (playing ? 'Đang phát' : 'Tạm dừng') : 'Chờ'}
                 </span>
               </div>
-              <div className="mt-4 grid grid-cols-12 items-end gap-1.5 rounded-lg border border-white/12 bg-black/24 p-3">
-                {Array.from({ length: 24 }, (_, index) => {
-                  const idleHeight = 12 + ((index * 7) % 28)
-                  const activeHeight = 16 + ((index * 11) % 34)
-
-                  return (
-                    <motion.span
-                    aria-hidden="true"
-                    className={cn(
-                      'col-span-1 rounded-full bg-white/18 transition-all',
-                      playing && 'bg-sky/85 shadow-[0_0_16px_rgba(125,211,252,0.28)]',
-                    )}
-                    key={index}
-                      animate={{
-                        height: playing ? [`${idleHeight}px`, `${activeHeight}px`, `${idleHeight + 8}px`] : `${idleHeight}px`,
-                        opacity: playing ? [0.66, 1, 0.76] : 0.48,
-                      }}
-                      transition={{
-                        duration: 0.9 + (index % 5) * 0.12,
-                        repeat: playing ? Number.POSITIVE_INFINITY : 0,
-                        repeatType: 'mirror',
-                      }}
-                    />
-                  )
-                })}
-              </div>
+              {hasMusic ? (
+                <div className="mt-4 overflow-hidden rounded-lg border border-white/12 bg-black">
+                  <iframe
+                    ref={playerFrameRef}
+                    key={music.embedUrl}
+                    title="Nhạc nền YouTube"
+                    src={music.embedUrl}
+                    className={cn('h-48 w-full', !open && 'h-px opacity-0')}
+                    allow="autoplay; encrypted-media; picture-in-picture"
+                    onLoad={() => {
+                      sendYouTubeCommand(playerFrameRef, 'setVolume', [volume])
+                      sendYouTubeCommand(playerFrameRef, playing ? 'playVideo' : 'pauseVideo')
+                    }}
+                    referrerPolicy="strict-origin-when-cross-origin"
+                  />
+                </div>
+              ) : (
+                <div className="mt-4 rounded-lg border border-white/12 bg-black/24 p-4 text-sm font-semibold text-white/62">
+                  Dán link YouTube rồi bấm Phát để mở trình phát.
+                </div>
+              )}
             </div>
 
             <form className="grid gap-3 p-4" onSubmit={playMusic}>

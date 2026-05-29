@@ -3,12 +3,16 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import {
   AlertTriangle,
+  Bot,
   CheckCircle2,
   ListTodo,
   Plus,
+  Rocket,
   Search,
+  Sparkles,
   TimerReset,
   TrendingUp,
+  Wrench,
   X,
 } from 'lucide-react'
 
@@ -68,6 +72,122 @@ const TASK_LIST_VIEWS = {
   },
 }
 
+const UPDATE_NOTES_VERSION = '2026-05-29'
+const UPDATE_NOTES_STORAGE_KEY = 'pastel-update-notes-version'
+const UPDATE_NOTES = [
+  {
+    title: 'Tính năng mới',
+    icon: Sparkles,
+    items: [
+      'Lịch báo cáo ưu tiên chế độ tuần và hỗ trợ kéo thả task.',
+      'Nhắc deadline theo mốc 24h, 6h và 1h trước hạn.',
+      'Giờ tập trung được tích lũy vào báo cáo tuần.',
+    ],
+  },
+  {
+    title: 'Đã sửa lỗi',
+    icon: Wrench,
+    items: [
+      'Task hết hạn không còn làm lệch màu các thanh trong lịch.',
+      'Ma trận Eisenhower hiển thị đúng bốn nhóm ưu tiên.',
+      'Task hoàn thành được ẩn khỏi lịch làm việc.',
+    ],
+  },
+  {
+    title: 'Cải tiến',
+    icon: Rocket,
+    items: [
+      'Thanh nhạc nền trong Focus gọn hơn và chuyên nghiệp hơn.',
+      'Thời gian nghỉ ngắn và nghỉ dài cũng được tính khi bấm Bắt đầu.',
+      'Gợi ý áp dụng AI được đặt ngay trong Dashboard.',
+    ],
+  },
+]
+
+const AI_SUGGESTIONS = [
+  'Tự phân loại task vào ma trận Eisenhower từ tiêu đề, mô tả và deadline.',
+  'Tạo lịch tuần tự động dựa trên deadline, mức ưu tiên và giờ tập trung còn trống.',
+  'Dự báo nguy cơ trễ hạn rồi gợi ý chia nhỏ task hoặc gia hạn hợp lý.',
+  'Tóm tắt báo cáo tuần bằng ngôn ngữ tự nhiên và đề xuất tuần sau nên tập trung vào đâu.',
+]
+
+function getStoredUpdateNotesVersion() {
+  try {
+    return window.localStorage.getItem(UPDATE_NOTES_STORAGE_KEY) ?? ''
+  } catch {
+    return ''
+  }
+}
+
+function storeUpdateNotesVersion() {
+  try {
+    window.localStorage.setItem(UPDATE_NOTES_STORAGE_KEY, UPDATE_NOTES_VERSION)
+  } catch {
+    // Local storage có thể bị tắt ở một số trình duyệt.
+  }
+}
+
+function UpdateNotesModal({ onClose }) {
+  return (
+    <motion.div
+      className="fixed inset-0 z-[70] grid place-items-center bg-slate-950/45 p-4 backdrop-blur-sm"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+    >
+      <motion.section
+        className="w-full max-w-3xl overflow-hidden rounded-lg border bg-card text-card-foreground shadow-soft"
+        initial={{ opacity: 0, y: 14, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 14, scale: 0.98 }}
+        transition={{ duration: 0.18 }}
+      >
+        <div className="flex items-start justify-between gap-4 border-b bg-card-soft p-5">
+          <div className="min-w-0">
+            <Badge variant="secondary">Cập nhật {UPDATE_NOTES_VERSION}</Badge>
+            <h2 className="mt-3 text-2xl font-bold">Thông tin cập nhật web</h2>
+            <p className="mt-1 text-sm leading-6 text-muted-foreground">
+              Những thay đổi mới nhất cho lịch, focus mode, báo cáo và trải nghiệm làm việc.
+            </p>
+          </div>
+          <Button type="button" variant="outline" size="icon" title="Đóng" aria-label="Đóng" onClick={onClose}>
+            <X />
+          </Button>
+        </div>
+        <div className="grid gap-4 p-5 md:grid-cols-3">
+          {UPDATE_NOTES.map((group) => {
+            const Icon = group.icon
+
+            return (
+              <section className="rounded-lg border bg-card-soft p-4" key={group.title}>
+                <div className="mb-3 flex items-center gap-2">
+                  <span className="flex size-9 items-center justify-center rounded-lg bg-card">
+                    <Icon className="size-4 text-primary" />
+                  </span>
+                  <h3 className="text-sm font-black">{group.title}</h3>
+                </div>
+                <ul className="grid gap-2 text-sm leading-5 text-muted-foreground">
+                  {group.items.map((item) => (
+                    <li className="flex gap-2" key={item}>
+                      <span className="mt-2 size-1.5 shrink-0 rounded-full bg-primary" />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )
+          })}
+        </div>
+        <div className="border-t bg-card-soft p-5">
+          <Button type="button" className="w-full sm:w-auto" onClick={onClose}>
+            Đã hiểu
+          </Button>
+        </div>
+      </motion.section>
+    </motion.div>
+  )
+}
+
 export function DashboardPage() {
   const navigate = useNavigate()
   const { settings } = useSettings()
@@ -79,6 +199,7 @@ export function DashboardPage() {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState(settings.defaultTaskFilter)
   const [taskListView, setTaskListView] = useState('active')
+  const [showUpdateNotes, setShowUpdateNotes] = useState(() => getStoredUpdateNotesVersion() !== UPDATE_NOTES_VERSION)
 
   const stats = getDashboardStats(tasks)
   const upcomingTasks = getUpcomingTasks(tasks)
@@ -187,6 +308,11 @@ export function DashboardPage() {
     navigate(`/focus/${task.id}`)
   }
 
+  function closeUpdateNotes() {
+    storeUpdateNotesVersion()
+    setShowUpdateNotes(false)
+  }
+
   if (loading) {
     return <EmptyState title="Đang tải dashboard" description="Dữ liệu task đang được đồng bộ." />
   }
@@ -198,11 +324,21 @@ export function DashboardPage() {
           <h1 className="text-3xl font-bold sm:text-4xl">Dashboard</h1>
           <p className="mt-2 text-sm text-muted-foreground">Tổng quan và quản lý công việc cá nhân</p>
         </div>
-        <Button type="button" onClick={openNewTaskForm}>
-          {showTaskForm && !editingTask ? <X /> : <Plus />}
-          {showTaskForm && !editingTask ? 'Đóng form' : 'Thêm task'}
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button type="button" variant="outline" onClick={() => setShowUpdateNotes(true)}>
+            <Sparkles />
+            Cập nhật
+          </Button>
+          <Button type="button" onClick={openNewTaskForm}>
+            {showTaskForm && !editingTask ? <X /> : <Plus />}
+            {showTaskForm && !editingTask ? 'Đóng form' : 'Thêm task'}
+          </Button>
+        </div>
       </section>
+
+      <AnimatePresence>
+        {showUpdateNotes ? <UpdateNotesModal onClose={closeUpdateNotes} /> : null}
+      </AnimatePresence>
 
       <AnimatePresence initial={false}>
         {showTaskForm ? (
@@ -264,6 +400,27 @@ export function DashboardPage() {
           selected={taskListView === 'overdue'}
           onClick={() => showTaskListView('overdue')}
         />
+      </section>
+
+      <section className="overflow-hidden rounded-lg border bg-card shadow-soft">
+        <div className="grid gap-4 bg-card-soft p-5 lg:grid-cols-[260px_minmax(0,1fr)] lg:items-center">
+          <div>
+            <div className="mb-3 flex size-11 items-center justify-center rounded-lg bg-lavender text-violet-950">
+              <Bot className="size-5" />
+            </div>
+            <h2 className="text-xl font-bold">Gợi ý áp dụng AI</h2>
+            <p className="mt-1 text-sm leading-6 text-muted-foreground">
+              Các hướng có thể đưa vào app để giảm thao tác thủ công và lập kế hoạch thông minh hơn.
+            </p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {AI_SUGGESTIONS.map((suggestion) => (
+              <div className="rounded-lg border bg-card p-3 text-sm font-semibold leading-6 text-muted-foreground" key={suggestion}>
+                {suggestion}
+              </div>
+            ))}
+          </div>
+        </div>
       </section>
 
       <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_390px]">

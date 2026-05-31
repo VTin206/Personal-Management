@@ -13,6 +13,20 @@ const DEADLINE_REMINDER_MILESTONES = [
   { hours: 6, label: '6 giờ', thresholdMs: 6 * 60 * 60 * 1000 },
   { hours: 24, label: '24 giờ', thresholdMs: 24 * 60 * 60 * 1000 },
 ]
+const SESSION_TIME_FIELDS = {
+  focus: {
+    logKey: 'focusLog',
+    secondsKey: 'focusSeconds',
+  },
+  short: {
+    logKey: 'shortBreakLog',
+    secondsKey: 'shortBreakSeconds',
+  },
+  long: {
+    logKey: 'longBreakLog',
+    secondsKey: 'longBreakSeconds',
+  },
+}
 
 function normalizeNow(value) {
   return value instanceof Date ? value : new Date()
@@ -116,13 +130,49 @@ export function getDeadlineReminderTasks(tasks, now = new Date()) {
 }
 
 export function getTaskFocusSeconds(task) {
-  const focusSeconds = Number(task?.focusSeconds)
+  return getTaskSessionSeconds(task, 'focus')
+}
 
-  return Number.isFinite(focusSeconds) && focusSeconds > 0 ? Math.floor(focusSeconds) : 0
+export function getTaskShortBreakSeconds(task) {
+  return getTaskSessionSeconds(task, 'short')
+}
+
+export function getTaskLongBreakSeconds(task) {
+  return getTaskSessionSeconds(task, 'long')
+}
+
+export function getTaskBreakSeconds(task) {
+  return getTaskShortBreakSeconds(task) + getTaskLongBreakSeconds(task)
+}
+
+export function getTaskTotalSessionSeconds(task) {
+  return getTaskFocusSeconds(task) + getTaskBreakSeconds(task)
+}
+
+export function getTaskSessionSeconds(task, mode) {
+  const config = SESSION_TIME_FIELDS[mode] ?? SESSION_TIME_FIELDS.focus
+  const sessionSeconds = Number(task?.[config.secondsKey])
+
+  return Number.isFinite(sessionSeconds) && sessionSeconds > 0 ? Math.floor(sessionSeconds) : 0
 }
 
 export function getTaskFocusLog(task) {
-  return task?.focusLog && typeof task.focusLog === 'object' ? task.focusLog : {}
+  return getTaskSessionLog(task, 'focus')
+}
+
+export function getTaskShortBreakLog(task) {
+  return getTaskSessionLog(task, 'short')
+}
+
+export function getTaskLongBreakLog(task) {
+  return getTaskSessionLog(task, 'long')
+}
+
+export function getTaskSessionLog(task, mode) {
+  const config = SESSION_TIME_FIELDS[mode] ?? SESSION_TIME_FIELDS.focus
+  const sessionLog = task?.[config.logKey]
+
+  return sessionLog && typeof sessionLog === 'object' ? sessionLog : {}
 }
 
 export function formatFocusDuration(totalSeconds) {
@@ -136,19 +186,24 @@ export function formatFocusDuration(totalSeconds) {
 }
 
 export function buildFocusTimeUpdates(task, elapsedSeconds, now = new Date()) {
+  return buildSessionTimeUpdates(task, 'focus', elapsedSeconds, now)
+}
+
+export function buildSessionTimeUpdates(task, mode, elapsedSeconds, now = new Date()) {
+  const config = SESSION_TIME_FIELDS[mode] ?? SESSION_TIME_FIELDS.focus
   const normalizedElapsedSeconds = Math.max(0, Math.floor(Number(elapsedSeconds) || 0))
   if (normalizedElapsedSeconds <= 0) return null
 
   const dateKey = getInputDateValue(normalizeNow(now))
-  const currentLog = getTaskFocusLog(task)
+  const currentLog = getTaskSessionLog(task, mode)
   const nextLog = {
     ...currentLog,
     [dateKey]: Math.max(0, Math.floor(Number(currentLog[dateKey]) || 0)) + normalizedElapsedSeconds,
   }
 
   return {
-    focusSeconds: getTaskFocusSeconds(task) + normalizedElapsedSeconds,
-    focusLog: nextLog,
+    [config.secondsKey]: getTaskSessionSeconds(task, mode) + normalizedElapsedSeconds,
+    [config.logKey]: nextLog,
   }
 }
 
@@ -188,15 +243,25 @@ export function getWeeklyChartData(tasks) {
 export function getWeeklyFocusChartData(tasks) {
   return getCurrentWeekDays().map((day) => {
     const dateKey = getInputDateValue(day)
-    const focusSeconds = tasks.reduce((total, task) => {
-      const logValue = Number(getTaskFocusLog(task)[dateKey])
+    const sumLogSeconds = (mode) => tasks.reduce((total, task) => {
+      const logValue = Number(getTaskSessionLog(task, mode)[dateKey])
       return total + (Number.isFinite(logValue) && logValue > 0 ? logValue : 0)
     }, 0)
+    const focusSeconds = sumLogSeconds('focus')
+    const shortBreakSeconds = sumLogSeconds('short')
+    const longBreakSeconds = sumLogSeconds('long')
+    const totalSeconds = focusSeconds + shortBreakSeconds + longBreakSeconds
 
     return {
       day: formatDate(day, { short: true }),
-      hours: Number((focusSeconds / 3600).toFixed(2)),
+      focusHours: Number((focusSeconds / 3600).toFixed(2)),
       focusSeconds,
+      hours: Number((totalSeconds / 3600).toFixed(2)),
+      longBreakHours: Number((longBreakSeconds / 3600).toFixed(2)),
+      longBreakSeconds,
+      shortBreakHours: Number((shortBreakSeconds / 3600).toFixed(2)),
+      shortBreakSeconds,
+      totalSeconds,
     }
   })
 }

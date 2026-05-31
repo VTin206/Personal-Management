@@ -50,11 +50,17 @@ import { cn } from '@/utils/cn'
 import { formatTaskDueDateTime } from '@/utils/date'
 import { getFirebaseErrorMessage } from '@/utils/firebaseErrors'
 import {
-  buildFocusTimeUpdates,
+  buildSessionTimeUpdates,
   canCompleteTaskWithUpdates,
   formatFocusDuration,
   getTaskFocusLog,
   getTaskFocusSeconds,
+  getTaskLongBreakLog,
+  getTaskLongBreakSeconds,
+  getTaskSessionSeconds,
+  getTaskShortBreakLog,
+  getTaskShortBreakSeconds,
+  getTaskTotalSessionSeconds,
   isActiveWorkTask,
   isTaskOverdue,
 } from '@/utils/taskStats'
@@ -316,6 +322,33 @@ function getTimerAnchorSecondsLeft(anchor, now = Date.now()) {
   const elapsedSeconds = Math.max(0, Math.floor((now - anchor.startedAt) / 1000))
   return Math.max(0, anchor.secondsAtStart - elapsedSeconds)
 }
+
+function createTimerAnchor(mode, secondsAtStart, startedAt = Date.now()) {
+  return {
+    mode,
+    secondsAtStart,
+    startedAt,
+    lastSavedAt: startedAt,
+  }
+}
+
+function createTaskSessionStats(task) {
+  return {
+    taskId: task.id,
+    focusSeconds: getTaskFocusSeconds(task),
+    focusLog: getTaskFocusLog(task),
+    shortBreakSeconds: getTaskShortBreakSeconds(task),
+    shortBreakLog: getTaskShortBreakLog(task),
+    longBreakSeconds: getTaskLongBreakSeconds(task),
+    longBreakLog: getTaskLongBreakLog(task),
+  }
+}
+
+function getTaskSessionStatsTotal(stats) {
+  return (stats.focusSeconds ?? 0) + (stats.shortBreakSeconds ?? 0) + (stats.longBreakSeconds ?? 0)
+}
+
+const MAX_TIMER_SYNC_SESSIONS = 1000
 
 const FOCUS_MUSIC_STORAGE_KEY = 'pastel-focus-music-url'
 const FOCUS_MUSIC_VOLUME_KEY = 'pastel-focus-music-volume'
@@ -640,13 +673,14 @@ function FocusMusicPlayer({ theme }) {
   const hasMusic = Boolean(music.embedUrl)
   const muted = volume <= 0
   const shouldRenderPanel = open || hasMusic
+  const shouldRenderPlayer = hasMusic && playing
 
   useEffect(() => {
-    if (!hasMusic) return
+    if (!shouldRenderPlayer) return
 
     sendYouTubeCommand(playerFrameRef, 'setVolume', [volume])
-    sendYouTubeCommand(playerFrameRef, playing ? 'playVideo' : 'pauseVideo')
-  }, [hasMusic, playing, volume])
+    sendYouTubeCommand(playerFrameRef, 'playVideo')
+  }, [shouldRenderPlayer, volume])
 
   function updateSourceUrl(sourceUrl) {
     setMusic((current) => ({ ...current, error: '', sourceUrl }))
@@ -672,6 +706,7 @@ function FocusMusicPlayer({ theme }) {
   }
 
   function clearMusic() {
+    sendYouTubeCommand(playerFrameRef, 'stopVideo')
     storeFocusMusicUrl('')
     setMusic(createFocusMusicState(''))
     setPlaying(false)
@@ -681,6 +716,7 @@ function FocusMusicPlayer({ theme }) {
   function togglePlaying() {
     if (!hasMusic) return
 
+    if (playing) sendYouTubeCommand(playerFrameRef, 'stopVideo')
     setPlaying((current) => !current)
   }
 
@@ -748,7 +784,7 @@ function FocusMusicPlayer({ theme }) {
                   {hasMusic ? (playing ? 'Đang phát' : 'Tạm dừng') : 'Chờ'}
                 </span>
               </div>
-              {hasMusic ? (
+              {shouldRenderPlayer ? (
                 <div className="mt-4 overflow-hidden rounded-lg border border-white/12 bg-black">
                   <iframe
                     ref={playerFrameRef}
@@ -763,6 +799,19 @@ function FocusMusicPlayer({ theme }) {
                     }}
                     referrerPolicy="strict-origin-when-cross-origin"
                   />
+                </div>
+              ) : hasMusic ? (
+                <div className="mt-4 grid gap-3 rounded-lg border border-white/12 bg-black/24 p-4 text-sm font-semibold text-white/72">
+                  <div className="flex items-center gap-3">
+                    <span className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-white/16 bg-white/12">
+                      {music.thumbnailUrl ? (
+                        <img src={music.thumbnailUrl} alt="" className="size-full object-cover" referrerPolicy="no-referrer" />
+                      ) : (
+                        <Headphones className="size-5" />
+                      )}
+                    </span>
+                    <span>Nhạc đã tạm dừng. Bấm phát lại để mở trình phát.</span>
+                  </div>
                 </div>
               ) : (
                 <div className="mt-4 rounded-lg border border-white/12 bg-black/24 p-4 text-sm font-semibold text-white/62">
@@ -886,8 +935,16 @@ export function FocusTaskPage() {
   const hasPlayedTaskStartSound = useRef(false)
   const timerAnchorRef = useRef(null)
   const taskRef = useRef(null)
-  const focusStatsRef = useRef({ taskId: '', focusSeconds: 0, focusLog: {} })
-  const focusSaveQueueRef = useRef(Promise.resolve())
+  const sessionStatsRef = useRef({
+    taskId: '',
+    focusSeconds: 0,
+    focusLog: {},
+    shortBreakSeconds: 0,
+    shortBreakLog: {},
+    longBreakSeconds: 0,
+    longBreakLog: {},
+  })
+  const sessionSaveQueueRef = useRef(Promise.resolve())
 
   useEffect(() => {
     hasPlayedTaskStartSound.current = false
@@ -898,65 +955,56 @@ export function FocusTaskPage() {
 
     if (!task) return
 
-    if (focusStatsRef.current.taskId !== task.id) {
-      focusStatsRef.current = {
-        taskId: task.id,
-        focusSeconds: getTaskFocusSeconds(task),
-        focusLog: getTaskFocusLog(task),
-      }
+    const nextSessionStats = createTaskSessionStats(task)
+
+    if (sessionStatsRef.current.taskId !== task.id) {
+      sessionStatsRef.current = nextSessionStats
       return
     }
 
-    if (getTaskFocusSeconds(task) >= focusStatsRef.current.focusSeconds) {
-      focusStatsRef.current = {
-        taskId: task.id,
-        focusSeconds: getTaskFocusSeconds(task),
-        focusLog: getTaskFocusLog(task),
-      }
+    if (getTaskSessionStatsTotal(nextSessionStats) >= getTaskSessionStatsTotal(sessionStatsRef.current)) {
+      sessionStatsRef.current = nextSessionStats
     }
   }, [task])
 
-  const saveFocusSeconds = useCallback((elapsedSeconds) => {
+  const saveSessionSeconds = useCallback((sessionMode, elapsedSeconds) => {
     const activeTask = taskRef.current
     if (!activeTask || elapsedSeconds <= 0) return Promise.resolve()
 
-    if (focusStatsRef.current.taskId !== activeTask.id) {
-      focusStatsRef.current = {
-        taskId: activeTask.id,
-        focusSeconds: getTaskFocusSeconds(activeTask),
-        focusLog: getTaskFocusLog(activeTask),
-      }
+    if (sessionStatsRef.current.taskId !== activeTask.id) {
+      sessionStatsRef.current = createTaskSessionStats(activeTask)
     }
 
-    const updates = buildFocusTimeUpdates(
+    const updates = buildSessionTimeUpdates(
       {
         ...activeTask,
-        focusSeconds: focusStatsRef.current.focusSeconds,
-        focusLog: focusStatsRef.current.focusLog,
+        focusSeconds: sessionStatsRef.current.focusSeconds,
+        focusLog: sessionStatsRef.current.focusLog,
+        shortBreakSeconds: sessionStatsRef.current.shortBreakSeconds,
+        shortBreakLog: sessionStatsRef.current.shortBreakLog,
+        longBreakSeconds: sessionStatsRef.current.longBreakSeconds,
+        longBreakLog: sessionStatsRef.current.longBreakLog,
       },
+      sessionMode,
       elapsedSeconds,
     )
     if (!updates) return Promise.resolve()
 
-    focusStatsRef.current = {
-      taskId: activeTask.id,
-      focusSeconds: updates.focusSeconds,
-      focusLog: updates.focusLog,
-    }
+    sessionStatsRef.current = { ...sessionStatsRef.current, taskId: activeTask.id, ...updates }
 
-    focusSaveQueueRef.current = focusSaveQueueRef.current
+    sessionSaveQueueRef.current = sessionSaveQueueRef.current
       .catch(() => undefined)
       .then(() => updateTask(activeTask.id, updates))
-      .catch((focusError) => {
-        setActionError(getFirebaseErrorMessage(focusError))
+      .catch((sessionError) => {
+        setActionError(getFirebaseErrorMessage(sessionError))
       })
 
-    return focusSaveQueueRef.current
+    return sessionSaveQueueRef.current
   }, [updateTask])
 
-  const consumeElapsedFocusSeconds = useCallback((nowMs = Date.now()) => {
+  const consumeElapsedSessionSeconds = useCallback((nowMs = Date.now()) => {
     const anchor = timerAnchorRef.current
-    if (!anchor) return 0
+    if (!anchor) return null
 
     const saveFrom = anchor.lastSavedAt ?? anchor.startedAt
     const sessionEnd = anchor.startedAt + anchor.secondsAtStart * 1000
@@ -967,15 +1015,18 @@ export function FocusTaskPage() {
       anchor.lastSavedAt = saveFrom + elapsedSeconds * 1000
     }
 
-    return elapsedSeconds
+    return {
+      elapsedSeconds,
+      mode: anchor.mode,
+    }
   }, [])
 
-  const flushFocusTime = useCallback((nowMs = Date.now()) => {
-    const elapsedSeconds = consumeElapsedFocusSeconds(nowMs)
-    if (elapsedSeconds <= 0) return Promise.resolve()
+  const flushSessionTime = useCallback((nowMs = Date.now()) => {
+    const elapsed = consumeElapsedSessionSeconds(nowMs)
+    if (!elapsed || elapsed.elapsedSeconds <= 0) return Promise.resolve()
 
-    return saveFocusSeconds(elapsedSeconds)
-  }, [consumeElapsedFocusSeconds, saveFocusSeconds])
+    return saveSessionSeconds(elapsed.mode, elapsed.elapsedSeconds)
+  }, [consumeElapsedSessionSeconds, saveSessionSeconds])
 
   useEffect(() => {
     if (!running) {
@@ -984,22 +1035,68 @@ export function FocusTaskPage() {
     }
 
     function syncTimerWithClock() {
-      const anchor = timerAnchorRef.current
-      if (!anchor) return
+      const nowMs = Date.now()
+      const elapsedByMode = {}
+      const completedModes = []
+      let anchor = timerAnchorRef.current
+      let syncedSessions = 0
 
-      const secondsLeft = getTimerAnchorSecondsLeft(anchor)
+      if (!anchor) {
+        anchor = createTimerAnchor(mode, durations[mode] * 60, nowMs)
+        timerAnchorRef.current = anchor
+      }
 
-      setSecondsByMode((current) => {
-        if (current[anchor.mode] === secondsLeft) return current
-        return { ...current, [anchor.mode]: secondsLeft }
+      function collectElapsed(elapsed) {
+        if (!elapsed || elapsed.elapsedSeconds <= 0) return
+        elapsedByMode[elapsed.mode] = (elapsedByMode[elapsed.mode] ?? 0) + elapsed.elapsedSeconds
+      }
+
+      while (anchor && syncedSessions < MAX_TIMER_SYNC_SESSIONS) {
+        const sessionEnd = anchor.startedAt + anchor.secondsAtStart * 1000
+
+        if (nowMs < sessionEnd) {
+          if (completedModes.length > 0) collectElapsed(consumeElapsedSessionSeconds(nowMs))
+          break
+        }
+
+        collectElapsed(consumeElapsedSessionSeconds(sessionEnd))
+        completedModes.push(anchor.mode)
+
+        const nextMode = getNextMode(anchor.mode)
+        anchor = createTimerAnchor(nextMode, durations[nextMode] * 60, sessionEnd)
+        timerAnchorRef.current = anchor
+        syncedSessions += 1
+      }
+
+      if (syncedSessions >= MAX_TIMER_SYNC_SESSIONS && anchor) {
+        anchor = createTimerAnchor(anchor.mode, durations[anchor.mode] * 60, nowMs)
+        timerAnchorRef.current = anchor
+      }
+
+      Object.entries(elapsedByMode).forEach(([sessionMode, elapsedSeconds]) => {
+        saveSessionSeconds(sessionMode, elapsedSeconds)
       })
 
-      if (secondsLeft <= 0) {
-        const nextMode = getNextMode(anchor.mode)
-        flushFocusTime()
-        timerAnchorRef.current = null
-        setMode(nextMode)
-        setRunning(false)
+      const activeAnchor = timerAnchorRef.current
+      if (!activeAnchor) return
+
+      const secondsLeft = getTimerAnchorSecondsLeft(activeAnchor, nowMs)
+
+      setSecondsByMode((current) => {
+        const nextSecondsByMode = { ...current }
+
+        completedModes.forEach((completedMode) => {
+          nextSecondsByMode[completedMode] = durations[completedMode] * 60
+        })
+        nextSecondsByMode[activeAnchor.mode] = secondsLeft
+
+        return Object.keys(nextSecondsByMode).every((key) => nextSecondsByMode[key] === current[key])
+          ? current
+          : nextSecondsByMode
+      })
+      setMode((currentModeKey) => (currentModeKey === activeAnchor.mode ? currentModeKey : activeAnchor.mode))
+
+      if (completedModes.length > 0) {
         playSessionSwitchSound()
       }
     }
@@ -1007,18 +1104,18 @@ export function FocusTaskPage() {
     syncTimerWithClock()
 
     const intervalId = window.setInterval(syncTimerWithClock, 500)
-    const focusSaveIntervalId = window.setInterval(() => flushFocusTime(), 60_000)
+    const sessionSaveIntervalId = window.setInterval(() => flushSessionTime(), 60_000)
     window.addEventListener('focus', syncTimerWithClock)
     document.addEventListener('visibilitychange', syncTimerWithClock)
 
     return () => {
       window.clearInterval(intervalId)
-      window.clearInterval(focusSaveIntervalId)
+      window.clearInterval(sessionSaveIntervalId)
       window.removeEventListener('focus', syncTimerWithClock)
       document.removeEventListener('visibilitychange', syncTimerWithClock)
-      flushFocusTime()
+      flushSessionTime()
     }
-  }, [flushFocusTime, running])
+  }, [consumeElapsedSessionSeconds, durations, flushSessionTime, mode, running, saveSessionSeconds])
 
   const currentMode = FOCUS_MODES[mode]
   const selectedTheme = FOCUS_THEME_MAP[selectedThemeKey] ?? FOCUS_THEME_MAP[DEFAULT_FOCUS_THEME_KEY]
@@ -1038,14 +1135,26 @@ export function FocusTaskPage() {
   }
 
   function switchMode(nextMode) {
-    flushFocusTime()
-    timerAnchorRef.current = null
+    if (nextMode === mode) return
+
+    flushSessionTime()
     setMode(nextMode)
-    setRunning(false)
+
+    if (running) {
+      const secondsAtStart = secondsByMode[nextMode] <= 0 ? durations[nextMode] * 60 : secondsByMode[nextMode]
+      timerAnchorRef.current = createTimerAnchor(nextMode, secondsAtStart)
+
+      if (secondsByMode[nextMode] <= 0) {
+        setSecondsByMode((current) => ({ ...current, [nextMode]: secondsAtStart }))
+      }
+      return
+    }
+
+    timerAnchorRef.current = null
   }
 
   function resetTimer() {
-    flushFocusTime()
+    flushSessionTime()
     timerAnchorRef.current = null
     setRunning(false)
     setSecondsByMode((current) => ({ ...current, [mode]: durations[mode] * 60 }))
@@ -1061,7 +1170,7 @@ export function FocusTaskPage() {
       const anchor = timerAnchorRef.current
       if (anchor) {
         const secondsLeft = getTimerAnchorSecondsLeft(anchor)
-        flushFocusTime()
+        flushSessionTime()
         setSecondsByMode((current) => ({ ...current, [anchor.mode]: secondsLeft }))
       }
       timerAnchorRef.current = null
@@ -1080,12 +1189,7 @@ export function FocusTaskPage() {
       setSecondsByMode((currentSecondsByMode) => ({ ...currentSecondsByMode, [mode]: secondsAtStart }))
     }
 
-    timerAnchorRef.current = {
-      mode,
-      secondsAtStart,
-      startedAt: Date.now(),
-      lastSavedAt: Date.now(),
-    }
+    timerAnchorRef.current = createTimerAnchor(mode, secondsAtStart)
     setRunning(true)
   }
 
@@ -1109,7 +1213,7 @@ export function FocusTaskPage() {
     setActionError('')
 
     try {
-      await flushFocusTime()
+      await flushSessionTime()
       await updateTask(task.id, { status: 'completed' })
       playTaskCompleteSound()
       timerAnchorRef.current = null
@@ -1330,6 +1434,18 @@ export function FocusTaskPage() {
                 <div className={cn('ml-2 mt-3 inline-flex h-8 items-center gap-2 rounded-full border px-3 text-xs font-bold', selectedTheme.metaClassName)}>
                   <Timer className="size-4" />
                   Đã tập trung {formatFocusDuration(getTaskFocusSeconds(task))}
+                </div>
+                <div className={cn('ml-2 mt-3 inline-flex h-8 items-center gap-2 rounded-full border px-3 text-xs font-bold', selectedTheme.metaClassName)}>
+                  <Coffee className="size-4" />
+                  Nghỉ ngắn {formatFocusDuration(getTaskSessionSeconds(task, 'short'))}
+                </div>
+                <div className={cn('ml-2 mt-3 inline-flex h-8 items-center gap-2 rounded-full border px-3 text-xs font-bold', selectedTheme.metaClassName)}>
+                  <Sparkles className="size-4" />
+                  Nghỉ dài {formatFocusDuration(getTaskSessionSeconds(task, 'long'))}
+                </div>
+                <div className={cn('ml-2 mt-3 inline-flex h-8 items-center gap-2 rounded-full border px-3 text-xs font-bold', selectedTheme.metaClassName)}>
+                  <Timer className="size-4" />
+                  Tổng {formatFocusDuration(getTaskTotalSessionSeconds(task))}
                 </div>
               </div>
             </motion.section>

@@ -33,6 +33,10 @@ function normalizeTask(documentSnapshot) {
     completedAt: toDate(data.completedAt),
     focusSeconds: Number.isFinite(data.focusSeconds) ? data.focusSeconds : 0,
     focusLog: data.focusLog && typeof data.focusLog === 'object' ? data.focusLog : {},
+    shortBreakSeconds: Number.isFinite(data.shortBreakSeconds) ? data.shortBreakSeconds : 0,
+    shortBreakLog: data.shortBreakLog && typeof data.shortBreakLog === 'object' ? data.shortBreakLog : {},
+    longBreakSeconds: Number.isFinite(data.longBreakSeconds) ? data.longBreakSeconds : 0,
+    longBreakLog: data.longBreakLog && typeof data.longBreakLog === 'object' ? data.longBreakLog : {},
   }
 }
 
@@ -74,6 +78,10 @@ export function createTask(userId, task) {
     dueTime: task.dueTime ?? '',
     focusSeconds: 0,
     focusLog: {},
+    shortBreakSeconds: 0,
+    shortBreakLog: {},
+    longBreakSeconds: 0,
+    longBreakLog: {},
     createdAt: serverTimestamp(),
     completedAt,
     userId,

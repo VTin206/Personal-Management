@@ -22,6 +22,10 @@ service cloud.firestore {
         'dueTime',
         'focusSeconds',
         'focusLog',
+        'shortBreakSeconds',
+        'shortBreakLog',
+        'longBreakSeconds',
+        'longBreakLog',
         'createdAt',
         'completedAt',
         'userId'
@@ -46,6 +50,10 @@ service cloud.firestore {
       && (!data.keys().hasAny(['dueTime']) || data.dueTime is string)
       && (!data.keys().hasAny(['focusSeconds']) || (data.focusSeconds is int && data.focusSeconds >= 0))
       && (!data.keys().hasAny(['focusLog']) || data.focusLog is map)
+      && (!data.keys().hasAny(['shortBreakSeconds']) || (data.shortBreakSeconds is int && data.shortBreakSeconds >= 0))
+      && (!data.keys().hasAny(['shortBreakLog']) || data.shortBreakLog is map)
+      && (!data.keys().hasAny(['longBreakSeconds']) || (data.longBreakSeconds is int && data.longBreakSeconds >= 0))
+      && (!data.keys().hasAny(['longBreakLog']) || data.longBreakLog is map)
       && data.createdAt is timestamp
       && (data.completedAt == null || data.completedAt is timestamp)
       && data.userId is string;

@@ -544,7 +544,7 @@ export function WeeklyReportPage() {
   const stats = getDashboardStats(tasks)
   const totalCompletedThisWeek = weeklyData.reduce((total, item) => total + item.completed, 0)
   const totalOverdueThisWeek = weeklyData.reduce((total, item) => total + item.overdue, 0)
-  const totalFocusSecondsThisWeek = weeklyFocusData.reduce((total, item) => total + item.focusSeconds, 0)
+  const totalSessionSecondsThisWeek = weeklyFocusData.reduce((total, item) => total + item.totalSeconds, 0)
   const calendarDays = useMemo(
     () => (calendarView === 'week' ? buildWeekCalendarDays(selectedDate) : buildMonthCalendarDays(monthDate)),
     [calendarView, monthDate, selectedDate],
@@ -655,7 +655,7 @@ export function WeeklyReportPage() {
             <ReportMetric title="Task trễ hạn" value={stats.overdue} icon={Clock3} tone="bg-peach text-rose-950" />
             <ReportMetric title="Đã làm tuần này" value={totalCompletedThisWeek} icon={CalendarCheck2} tone="bg-sky text-sky-950" />
             <ReportMetric title="Trễ hạn tuần này" value={totalOverdueThisWeek} icon={BarChart3} tone="bg-butter text-amber-950" />
-            <ReportMetric title="Tập trung tuần này" value={formatFocusDuration(totalFocusSecondsThisWeek)} icon={Target} tone="bg-lavender text-violet-950" />
+            <ReportMetric title="Tổng thời gian tuần này" value={formatFocusDuration(totalSessionSecondsThisWeek)} icon={Target} tone="bg-lavender text-violet-950" />
           </section>
 
           <section className="grid gap-4 xl:grid-cols-2">
@@ -698,7 +698,7 @@ export function WeeklyReportPage() {
               <CardHeader className="bg-card-soft">
                 <CardTitle className="flex items-center gap-2">
                   <Target className="size-5 text-primary" />
-                  Giờ tập trung trong tuần
+                  Tổng thời gian trong tuần
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-5">
@@ -709,11 +709,27 @@ export function WeeklyReportPage() {
                       <XAxis dataKey="day" tickLine={false} axisLine={false} tickMargin={10} />
                       <YAxis allowDecimals={false} tickLine={false} axisLine={false} />
                       <Tooltip content={<PrettyTooltip />} cursor={{ fill: 'rgba(215, 203, 255, 0.26)' }} />
+                      <Legend iconType="circle" />
                       <Bar
-                        dataKey="hours"
-                        name="Giờ tập trung"
+                        dataKey="focusHours"
+                        name="Tập trung"
                         fill="#d8ccff"
+                        stackId="sessionTime"
+                        barSize={32}
+                      />
+                      <Bar
+                        dataKey="shortBreakHours"
+                        name="Nghỉ ngắn"
+                        fill="#c6f6dd"
+                        stackId="sessionTime"
+                        barSize={32}
+                      />
+                      <Bar
+                        dataKey="longBreakHours"
+                        name="Nghỉ dài"
+                        fill="#ffd2b8"
                         radius={[8, 8, 0, 0]}
+                        stackId="sessionTime"
                         barSize={32}
                       />
                     </BarChart>

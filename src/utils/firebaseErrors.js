@@ -17,9 +17,15 @@ const ERROR_MESSAGES = {
   'auth/weak-password': 'Mật khẩu cần ít nhất 6 ký tự.',
   'auth/wrong-password': 'Mật khẩu chưa đúng.',
   'auth/network-request-failed': 'Kết nối mạng đang không ổn định.',
-  'permission-denied': 'Bạn không có quyền thực hiện thao tác này.',
+  'permission-denied': 'Bạn không có quyền thực hiện thao tác này. Nếu vừa cấu hình Firebase, hãy deploy lại firestore.rules cho đúng project.',
 }
 
 export function getFirebaseErrorMessage(error) {
+  const rawMessage = error?.message ?? String(error ?? '')
+
+  if (rawMessage.toLowerCase().includes('missing or insufficient permissions')) {
+    return ERROR_MESSAGES['permission-denied']
+  }
+
   return ERROR_MESSAGES[error?.code] ?? error?.message ?? 'Có lỗi xảy ra, thử lại nhé.'
 }

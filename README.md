@@ -28,6 +28,12 @@ Trong Firebase Console:
 - Tạo Cloud Firestore database.
 - Dùng nội dung `firestore.rules` để đảm bảo user chỉ đọc/ghi task của chính mình.
 
+Nếu app báo `Missing or insufficient permissions`, deploy lại Firestore rules cho đúng project:
+
+```bash
+npx firebase-tools deploy --only firestore:rules --project <your-firebase-project-id>
+```
+
 ## Cấu trúc chính
 
 ```text

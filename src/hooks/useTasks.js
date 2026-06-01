@@ -7,6 +7,7 @@ import {
   updateTask as updateTaskService,
 } from '@/services/taskService'
 import { useAuth } from '@/hooks/useAuth'
+import { getFirebaseErrorMessage } from '@/utils/firebaseErrors'
 
 export function useTasks() {
   const { user } = useAuth()
@@ -23,9 +24,10 @@ export function useTasks() {
       (nextTasks) => {
         setTasks(nextTasks)
         setLoading(false)
+        setError('')
       },
       (snapshotError) => {
-        setError(snapshotError.message)
+        setError(getFirebaseErrorMessage(snapshotError))
         setLoading(false)
       },
     )

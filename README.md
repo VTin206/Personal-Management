@@ -1,48 +1,59 @@
-# Pastel Tasks
+# Personal Management
 
-Website quản lý công việc cá nhân bằng React, Vite, Firebase Authentication, Cloud Firestore, TailwindCSS, shadcn-style UI, lucide-react, framer-motion và Recharts.
+Personal task management app split into a frontend workspace and a backend workspace.
 
-## Chạy project
+## Structure
 
-```bash
+```text
+frontend/   React, Vite, Firebase client, TailwindCSS
+backend/    Java Spring Boot API
+.github/    CI workflow
+```
+
+Firebase project files stay at the repository root:
+
+```text
+firebase.json
+firestore.rules
+firestore.indexes.json
+```
+
+## Run Frontend
+
+```powershell
+cd frontend
 npm install
 npm run dev
 ```
 
-## Firebase
+From the repository root:
 
-Tạo file `.env` từ `.env.example`, rồi điền cấu hình Firebase web app:
-
-```bash
-VITE_FIREBASE_API_KEY=...
-VITE_FIREBASE_AUTH_DOMAIN=...
-VITE_FIREBASE_PROJECT_ID=...
-VITE_FIREBASE_STORAGE_BUCKET=...
-VITE_FIREBASE_MESSAGING_SENDER_ID=...
-VITE_FIREBASE_APP_ID=...
+```powershell
+npm run dev:frontend
 ```
 
-Trong Firebase Console:
+## Run Backend
 
-- Bật Authentication bằng Email/Password.
-- Tạo Cloud Firestore database.
-- Dùng nội dung `firestore.rules` để đảm bảo user chỉ đọc/ghi task của chính mình.
-
-Nếu app báo `Missing or insufficient permissions`, deploy lại Firestore rules cho đúng project:
-
-```bash
-npx firebase-tools deploy --only firestore:rules --project <your-firebase-project-id>
+```powershell
+cd backend
+.\mvnw.cmd spring-boot:run
 ```
 
-## Cấu trúc chính
+From the repository root:
 
-```text
-src/
-  components/
-  pages/
-  services/
-  hooks/
-  contexts/
-  config/
-  utils/
+```powershell
+npm run dev:backend
 ```
+
+The backend defaults to `http://localhost:8080`.
+
+## GitNexus
+
+GitNexus is configured for project structure and impact analysis.
+
+```powershell
+npm run gitnexus:status
+npm run gitnexus:analyze
+```
+
+Run `npm run gitnexus:analyze` after meaningful source changes so `AGENTS.md`, `CLAUDE.md`, and `.claude/skills/` stay current. The generated local index is stored in `.gitnexus/` and is not committed.

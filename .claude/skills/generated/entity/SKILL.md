@@ -1,70 +1,78 @@
 ---
 name: entity
-description: "Skill for the Entity area of Personal-Management. 20 symbols across 4 files."
+description: "Skill for the Entity area of Personal-Management. 51 symbols across 6 files."
 ---
 
 # Entity
 
-20 symbols | 4 files | Cohesion: 100%
+51 symbols | 6 files | Cohesion: 85%
 
 ## When to Use
 
 - Working with code in `backend/`
-- Understanding how Task, getTaskById, createTask work
+- Understanding how Task, getTaskById, deleteTask work
 - Modifying entity-related functionality
 
 ## Key Files
 
 | File | Symbols |
 |------|---------|
-| `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | Task, setId, setTitle, setDescription, setStatus (+5) |
-| `backend/src/main/java/com/personalmanagement/backend/Service/TaskService.java` | getTaskById, createTask, updateTask, deleteTask, toTaskEntity |
-| `backend/src/main/java/com/personalmanagement/backend/Controller/TaskController.java` | getTaskById, createTask, updateTask, deleteTask |
-| `backend/src/test/java/com/personalmanagement/backend/TaskControllerTest.java` | getTaskById_shouldReturnOk |
+| `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | Task, setUserId, setId, setTitle, setDescription (+26) |
+| `backend/src/main/java/com/personalmanagement/backend/Service/TaskService.java` | getTaskById, createTask, updateTask, deleteTask, toTaskEntity (+6) |
+| `backend/src/main/java/com/personalmanagement/backend/Controller/TaskController.java` | getTaskById, deleteTask, createTask, updateTask |
+| `backend/src/test/java/com/personalmanagement/backend/TaskControllerTest.java` | getTaskById_shouldReturnOk, createTask_shouldReturnCreated, updateTask_shouldReturnOk |
+| `backend/src/main/java/com/personalmanagement/backend/Repository/TaskRepository.java` | findByIdAndUserId |
+| `backend/src/main/java/com/personalmanagement/backend/DTO/response/TaskResponse.java` | from |
 
 ## Entry Points
 
 Start here when exploring this area:
 
-- **`Task`** (Class) — `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java:15`
-- **`getTaskById`** (Method) — `backend/src/main/java/com/personalmanagement/backend/Controller/TaskController.java:35`
-- **`createTask`** (Method) — `backend/src/main/java/com/personalmanagement/backend/Controller/TaskController.java:40`
-- **`updateTask`** (Method) — `backend/src/main/java/com/personalmanagement/backend/Controller/TaskController.java:45`
-- **`deleteTask`** (Method) — `backend/src/main/java/com/personalmanagement/backend/Controller/TaskController.java:50`
+- **`Task`** (Class) — `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java:17`
+- **`getTaskById`** (Method) — `backend/src/main/java/com/personalmanagement/backend/Controller/TaskController.java:40`
+- **`deleteTask`** (Method) — `backend/src/main/java/com/personalmanagement/backend/Controller/TaskController.java:62`
+- **`setUserId`** (Method) — `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java:53`
+- **`setId`** (Method) — `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java:65`
 
 ## Key Symbols
 
 | Symbol | Type | File | Line |
 |--------|------|------|------|
-| `Task` | Class | `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | 15 |
-| `getTaskById` | Method | `backend/src/main/java/com/personalmanagement/backend/Controller/TaskController.java` | 35 |
-| `createTask` | Method | `backend/src/main/java/com/personalmanagement/backend/Controller/TaskController.java` | 40 |
-| `updateTask` | Method | `backend/src/main/java/com/personalmanagement/backend/Controller/TaskController.java` | 45 |
-| `deleteTask` | Method | `backend/src/main/java/com/personalmanagement/backend/Controller/TaskController.java` | 50 |
-| `setId` | Method | `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | 52 |
-| `setTitle` | Method | `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | 60 |
-| `setDescription` | Method | `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | 68 |
-| `setStatus` | Method | `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | 76 |
-| `setPriority` | Method | `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | 84 |
-| `setStartDate` | Method | `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | 92 |
-| `setStartTime` | Method | `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | 100 |
-| `setDueDate` | Method | `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | 108 |
-| `setDueTime` | Method | `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | 116 |
-| `getTaskById` | Method | `backend/src/main/java/com/personalmanagement/backend/Service/TaskService.java` | 23 |
-| `createTask` | Method | `backend/src/main/java/com/personalmanagement/backend/Service/TaskService.java` | 27 |
-| `updateTask` | Method | `backend/src/main/java/com/personalmanagement/backend/Service/TaskService.java` | 31 |
-| `deleteTask` | Method | `backend/src/main/java/com/personalmanagement/backend/Service/TaskService.java` | 68 |
-| `toTaskEntity` | Method | `backend/src/main/java/com/personalmanagement/backend/Service/TaskService.java` | 73 |
-| `getTaskById_shouldReturnOk` | Method | `backend/src/test/java/com/personalmanagement/backend/TaskControllerTest.java` | 37 |
+| `Task` | Class | `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | 17 |
+| `getTaskById` | Method | `backend/src/main/java/com/personalmanagement/backend/Controller/TaskController.java` | 40 |
+| `deleteTask` | Method | `backend/src/main/java/com/personalmanagement/backend/Controller/TaskController.java` | 62 |
+| `setUserId` | Method | `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | 53 |
+| `setId` | Method | `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | 65 |
+| `setTitle` | Method | `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | 73 |
+| `setDescription` | Method | `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | 81 |
+| `setStatus` | Method | `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | 89 |
+| `setPriority` | Method | `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | 97 |
+| `setStartDate` | Method | `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | 105 |
+| `setStartTime` | Method | `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | 113 |
+| `setDueDate` | Method | `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | 121 |
+| `setDueTime` | Method | `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | 129 |
+| `findByIdAndUserId` | Method | `backend/src/main/java/com/personalmanagement/backend/Repository/TaskRepository.java` | 12 |
+| `getTaskById` | Method | `backend/src/main/java/com/personalmanagement/backend/Service/TaskService.java` | 33 |
+| `createTask` | Method | `backend/src/main/java/com/personalmanagement/backend/Service/TaskService.java` | 38 |
+| `updateTask` | Method | `backend/src/main/java/com/personalmanagement/backend/Service/TaskService.java` | 47 |
+| `deleteTask` | Method | `backend/src/main/java/com/personalmanagement/backend/Service/TaskService.java` | 86 |
+| `toTaskEntity` | Method | `backend/src/main/java/com/personalmanagement/backend/Service/TaskService.java` | 91 |
+| `requireUserId` | Method | `backend/src/main/java/com/personalmanagement/backend/Service/TaskService.java` | 105 |
 
 ## Execution Flows
 
 | Flow | Type | Steps |
 |------|------|-------|
-| `CreateTask → Task` | intra_community | 4 |
-| `CreateTask → SetTitle` | intra_community | 4 |
-| `CreateTask → SetDescription` | intra_community | 4 |
-| `CreateTask → SetStatus` | intra_community | 4 |
+| `CreateTask → Task` | cross_community | 4 |
+| `CreateTask → SetTitle` | cross_community | 4 |
+| `CreateTask → RequireTitle` | cross_community | 4 |
+| `CreateTask → SetDescription` | cross_community | 4 |
+| `UpdateTask → FindByIdAndUserId` | cross_community | 4 |
+| `UpdateTask → RequireUserId` | cross_community | 4 |
+| `UpdateTask → ValidateDueDateNotPast` | cross_community | 4 |
+| `UpdateTask → GetStartDate` | cross_community | 4 |
+| `UpdateTask → GetStartTime` | cross_community | 4 |
+| `UpdateTask → GetDueDate` | cross_community | 4 |
 
 ## How to Explore
 

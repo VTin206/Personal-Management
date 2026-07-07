@@ -11,6 +11,8 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 
 @Entity
@@ -19,6 +21,9 @@ public class Task {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Column(nullable = false)
+    private String userId;
 
     @Column(nullable = false, length = 200)
     private String title;
@@ -45,6 +50,14 @@ public class Task {
     private Instant createdAt;
     private Instant updatedAt;
     private Instant completedAt;
+
+    public void setUserId(String userId) {
+        this.userId = userId;
+    }
+
+    public String getUserId() {
+        return userId;
+    }
 
     public Long getId() {
         return id;
@@ -164,5 +177,56 @@ public class Task {
 
     public void setCompletedAt(Instant completedAt) {
         this.completedAt = completedAt;
+    }
+
+    @PrePersist
+    public void onCreate() {
+        Instant now = Instant.now();
+        applyDefaults();
+        if (createdAt == null) {
+            createdAt = now;
+        }
+        updatedAt = now;
+        syncCompletedAt(now);
+    }
+
+    @PreUpdate
+    public void onUpdate() {
+        applyDefaults();
+        updatedAt = Instant.now();
+        syncCompletedAt(updatedAt);
+    }
+
+    private void applyDefaults() {
+        if (status == null) {
+            status = TaskStatus.TODO;
+        }
+
+        if (priority == null) {
+            priority = TaskPriority.MEDIUM;
+        }
+
+        if (focusSeconds == null) {
+            focusSeconds = 0L;
+        }
+
+        if (shortBreakSeconds == null) {
+            shortBreakSeconds = 0L;
+        }
+
+        if (longBreakSeconds == null) {
+            longBreakSeconds = 0L;
+        }
+    }
+
+    private void syncCompletedAt(Instant now) {
+        if (status == TaskStatus.COMPLETED) {
+            if (completedAt == null) {
+                completedAt = now;
+            }
+            return;
+        }
+
+        completedAt = null;
     }
 }

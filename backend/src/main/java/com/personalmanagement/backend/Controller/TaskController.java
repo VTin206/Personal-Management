@@ -9,12 +9,13 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.personalmanagement.backend.DTO.request.CreateTaskRequest;
 import com.personalmanagement.backend.DTO.request.UpdateTaskRequest;
-import com.personalmanagement.backend.Entity.Task;
+import com.personalmanagement.backend.DTO.response.TaskResponse;
 import com.personalmanagement.backend.Service.TaskService;
 
 import jakarta.validation.Valid;
@@ -22,6 +23,8 @@ import jakarta.validation.Valid;
 @RestController
 @RequestMapping("/api/tasks")
 public class TaskController {
+    private static final String USER_ID_HEADER = "X-User-Id";
+
     private final TaskService taskService;
 
     public TaskController(TaskService taskService) {
@@ -29,28 +32,39 @@ public class TaskController {
     }
 
     @GetMapping
-    public ResponseEntity<List<Task>> getAllTasks() {
-        return ResponseEntity.ok(taskService.getAllTasks());
+    public ResponseEntity<List<TaskResponse>> getAllTasks(@RequestHeader(USER_ID_HEADER) String userId) {
+        return ResponseEntity.ok(taskService.getAllTasks(userId).stream()
+                .map(TaskResponse::from)
+                .toList());
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Task> getTaskById(@PathVariable Long id) {
-        return ResponseEntity.ok(taskService.getTaskById(id));
+    public ResponseEntity<TaskResponse> getTaskById(
+            @RequestHeader(USER_ID_HEADER) String userId,
+            @PathVariable Long id) {
+        return ResponseEntity.ok(TaskResponse.from(taskService.getTaskById(userId, id)));
     }
 
     @PostMapping
-    public ResponseEntity<Task> createTask(@Valid @RequestBody CreateTaskRequest request) {
-        return ResponseEntity.status(201).body(taskService.createTask(request));
+    public ResponseEntity<TaskResponse> createTask(
+            @RequestHeader(USER_ID_HEADER) String userId,
+            @Valid @RequestBody CreateTaskRequest request) {
+        return ResponseEntity.status(201).body(TaskResponse.from(taskService.createTask(userId, request)));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Task> updateTask(@PathVariable Long id, @RequestBody UpdateTaskRequest request) {
-        return ResponseEntity.ok(taskService.updateTask(id, request));
+    public ResponseEntity<TaskResponse> updateTask(
+            @RequestHeader(USER_ID_HEADER) String userId,
+            @PathVariable Long id,
+            @RequestBody UpdateTaskRequest request) {
+        return ResponseEntity.ok(TaskResponse.from(taskService.updateTask(userId, id, request)));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteTask(@PathVariable Long id) {
-        taskService.deleteTask(id);
+    public ResponseEntity<Void> deleteTask(
+            @RequestHeader(USER_ID_HEADER) String userId,
+            @PathVariable Long id) {
+        taskService.deleteTask(userId, id);
         return ResponseEntity.noContent().build();
     }
 }

@@ -2,27 +2,31 @@ package com.personalmanagement.backend.DTO.request;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
-
-import com.personalmanagement.backend.Entity.TaskPriority;
-import com.personalmanagement.backend.Entity.TaskStatus;
+import java.util.Map;
 
 import jakarta.validation.constraints.FutureOrPresent;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 public record UpdateTaskRequest(
-    @NotBlank(message = "Không được để trống tiêu đề")   
+    @NotBlank(message = "Task title is required")
     String title,
 
-    @Size(max = 1000, message = "Mô tả không được vượt quá 1000 ký tự")
+    @Size(max = 1000, message = "Task description must be at most 1000 characters")
     String description,
-    TaskStatus status,
-    TaskPriority priority,
+    String status,
+    String priority,
     LocalDate startDate,
     LocalTime startTime,
 
-    @FutureOrPresent(message = "Hạn chót không được ở quá khứ")
+    @FutureOrPresent(message = "Due date cannot be in the past")
     LocalDate dueDate,
-    LocalTime dueTime
+    LocalTime dueTime,
+    Long focusSeconds,
+    Map<String, Long> focusLog,
+    Long shortBreakSeconds,
+    Map<String, Long> shortBreakLog,
+    Long longBreakSeconds,
+    Map<String, Long> longBreakLog
 ) {
 }

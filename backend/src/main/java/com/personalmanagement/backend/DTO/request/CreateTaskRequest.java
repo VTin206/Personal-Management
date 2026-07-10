@@ -2,9 +2,7 @@ package com.personalmanagement.backend.DTO.request;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
-
-import com.personalmanagement.backend.Entity.TaskPriority;
-import com.personalmanagement.backend.Entity.TaskStatus;
+import java.util.Map;
 
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.FutureOrPresent;
@@ -12,21 +10,27 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 public record CreateTaskRequest(
-    @NotBlank(message = "Không được để trống tiêu đề")   
+    @NotBlank(message = "Task title is required")
     String title,
 
-    @Size(max = 1000, message = "Mô tả không được vượt quá 1000 ký tự")
+    @Size(max = 1000, message = "Task description must be at most 1000 characters")
     String description,
-    TaskStatus status,
-    TaskPriority priority,
+    String status,
+    String priority,
     LocalDate startDate,
     LocalTime startTime,
 
-    @FutureOrPresent(message = "Hạn chót không được ở quá khứ")
+    @FutureOrPresent(message = "Due date cannot be in the past")
     LocalDate dueDate,
-    LocalTime dueTime
+    LocalTime dueTime,
+    Long focusSeconds,
+    Map<String, Long> focusLog,
+    Long shortBreakSeconds,
+    Map<String, Long> shortBreakLog,
+    Long longBreakSeconds,
+    Map<String, Long> longBreakLog
 ) {
-       @AssertTrue(message = "Hạn chót phải sau hoặc bằng ngày bắt đầu")
+    @AssertTrue(message = "Due date must be on or after start date")
     public boolean isDueDateValid() {
         if (startDate == null || dueDate == null) {
             return true;
@@ -35,7 +39,7 @@ public record CreateTaskRequest(
         return !dueDate.isBefore(startDate);
     }
 
-    @AssertTrue(message = "Nếu cùng ngày, giờ hạn chót phải sau giờ bắt đầu")
+    @AssertTrue(message = "Due time must be after start time")
     public boolean isDueTimeValid() {
         if (startDate == null || dueDate == null || startTime == null || dueTime == null) {
             return true;

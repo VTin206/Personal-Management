@@ -3,6 +3,7 @@ package com.personalmanagement.backend.Service;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -58,11 +59,11 @@ public class TaskService {
         }
 
         if (request.status() != null) {
-            task.setStatus(request.status());
+            task.setStatus(TaskStatus.fromValue(request.status()));
         }
 
         if (request.priority() != null) {
-            task.setPriority(request.priority());
+            task.setPriority(TaskPriority.fromValue(request.priority()));
         }
 
         if (request.startDate() != null) {
@@ -81,6 +82,8 @@ public class TaskService {
             task.setDueTime(request.dueTime());
         }
 
+        applySessionUpdates(task, request);
+
         return taskRepository.save(task);
     }
 
@@ -93,12 +96,18 @@ public class TaskService {
         Task task = new Task();
         task.setTitle(requireTitle(request.title()));
         task.setDescription(validateDescription(request.description()));
-        task.setStatus(request.status() == null ? TaskStatus.TODO : request.status());
-        task.setPriority(request.priority() == null ? TaskPriority.MEDIUM : request.priority());
+        task.setStatus(request.status() == null ? TaskStatus.TODO : TaskStatus.fromValue(request.status()));
+        task.setPriority(request.priority() == null ? TaskPriority.MEDIUM : TaskPriority.fromValue(request.priority()));
         task.setStartDate(request.startDate());
         task.setStartTime(request.startTime());
         task.setDueDate(request.dueDate());
         task.setDueTime(request.dueTime());
+        task.setFocusSeconds(defaultSeconds(request.focusSeconds(), "focusSeconds"));
+        task.setFocusLog(validateLog(request.focusLog(), "focusLog"));
+        task.setShortBreakSeconds(defaultSeconds(request.shortBreakSeconds(), "shortBreakSeconds"));
+        task.setShortBreakLog(validateLog(request.shortBreakLog(), "shortBreakLog"));
+        task.setLongBreakSeconds(defaultSeconds(request.longBreakSeconds(), "longBreakSeconds"));
+        task.setLongBreakLog(validateLog(request.longBreakLog(), "longBreakLog"));
 
         return task;
     }
@@ -171,5 +180,66 @@ public class TaskService {
         if (startDate.equals(dueDate) && startTime != null && dueTime != null && !dueTime.isAfter(startTime)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Due time must be after start time");
         }
+    }
+
+    private void applySessionUpdates(Task task, UpdateTaskRequest request) {
+        if (request.focusSeconds() != null) {
+            task.setFocusSeconds(validateSeconds(request.focusSeconds(), "focusSeconds"));
+        }
+
+        if (request.focusLog() != null) {
+            task.setFocusLog(validateLog(request.focusLog(), "focusLog"));
+        }
+
+        if (request.shortBreakSeconds() != null) {
+            task.setShortBreakSeconds(validateSeconds(request.shortBreakSeconds(), "shortBreakSeconds"));
+        }
+
+        if (request.shortBreakLog() != null) {
+            task.setShortBreakLog(validateLog(request.shortBreakLog(), "shortBreakLog"));
+        }
+
+        if (request.longBreakSeconds() != null) {
+            task.setLongBreakSeconds(validateSeconds(request.longBreakSeconds(), "longBreakSeconds"));
+        }
+
+        if (request.longBreakLog() != null) {
+            task.setLongBreakLog(validateLog(request.longBreakLog(), "longBreakLog"));
+        }
+    }
+
+    private Long defaultSeconds(Long seconds, String fieldName) {
+        if (seconds == null) {
+            return 0L;
+        }
+
+        return validateSeconds(seconds, fieldName);
+    }
+
+    private Long validateSeconds(Long seconds, String fieldName) {
+        if (seconds < 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, fieldName + " must be greater than or equal to 0");
+        }
+
+        return seconds;
+    }
+
+    private Map<String, Long> validateLog(Map<String, Long> log, String fieldName) {
+        if (log == null) {
+            return Map.of();
+        }
+
+        log.forEach((date, seconds) -> {
+            if (!StringUtils.hasText(date)) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, fieldName + " contains an empty date key");
+            }
+
+            if (seconds == null || seconds < 0) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        fieldName + " values must be greater than or equal to 0");
+            }
+        });
+
+        return log;
     }
 }

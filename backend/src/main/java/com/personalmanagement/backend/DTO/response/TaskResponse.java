@@ -3,46 +3,68 @@ package com.personalmanagement.backend.DTO.response;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Map;
 
 import com.personalmanagement.backend.Entity.Task;
 import com.personalmanagement.backend.Entity.TaskPriority;
 import com.personalmanagement.backend.Entity.TaskStatus;
 
 public record TaskResponse(
-    Long id,
+    String id,
     String userId,
     String title,
     String description,
-    TaskStatus status,
-    TaskPriority priority,
+    String status,
+    String priority,
     LocalDate startDate,
-    LocalTime startTime,
+    String startTime,
     LocalDate dueDate,
-    LocalTime dueTime,
+    String dueTime,
     Long focusSeconds,
+    Map<String, Long> focusLog,
     Long shortBreakSeconds,
+    Map<String, Long> shortBreakLog,
     Long longBreakSeconds,
+    Map<String, Long> longBreakLog,
     Instant createdAt,
     Instant updatedAt,
     Instant completedAt
 ) {
+    private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
+
     public static TaskResponse from(Task task) {
         return new TaskResponse(
-                task.getId(),
+                task.getId() == null ? null : task.getId().toString(),
                 task.getUserId(),
                 task.getTitle(),
                 task.getDescription(),
-                task.getStatus(),
-                task.getPriority(),
+                statusValue(task.getStatus()),
+                priorityValue(task.getPriority()),
                 task.getStartDate(),
-                task.getStartTime(),
+                formatTime(task.getStartTime()),
                 task.getDueDate(),
-                task.getDueTime(),
+                formatTime(task.getDueTime()),
                 task.getFocusSeconds(),
+                task.getFocusLog(),
                 task.getShortBreakSeconds(),
+                task.getShortBreakLog(),
                 task.getLongBreakSeconds(),
+                task.getLongBreakLog(),
                 task.getCreatedAt(),
                 task.getUpdatedAt(),
                 task.getCompletedAt());
+    }
+
+    private static String statusValue(TaskStatus status) {
+        return status == null ? TaskStatus.TODO.getValue() : status.getValue();
+    }
+
+    private static String priorityValue(TaskPriority priority) {
+        return priority == null ? TaskPriority.MEDIUM.getValue() : priority.getValue();
+    }
+
+    private static String formatTime(LocalTime time) {
+        return time == null ? null : time.format(TIME_FORMATTER);
     }
 }

@@ -65,7 +65,7 @@ Start here when exploring this area:
 | Area | Connections |
 |------|-------------|
 | Pages | 2 calls |
-| Components | 1 calls |
+| Cluster_39 | 1 calls |
 
 ## How to Explore
 

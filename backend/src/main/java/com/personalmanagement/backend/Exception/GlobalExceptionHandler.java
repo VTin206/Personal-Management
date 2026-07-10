@@ -39,6 +39,11 @@ public class GlobalExceptionHandler {
         return buildResponse(exception.getStatusCode(), exception.getReason(), request, Map.of());
     }
 
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ApiError> handleIllegalArgument(IllegalArgumentException exception, WebRequest request) {
+        return buildResponse(HttpStatus.BAD_REQUEST, exception.getMessage(), request, Map.of());
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiError> handleUnexpected(Exception exception, WebRequest request) {
         return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, "Unexpected server error", request, Map.of());

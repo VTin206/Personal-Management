@@ -6,12 +6,14 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.util.List;
+import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -66,10 +68,14 @@ class TaskControllerTest {
 
         mockMvc.perform(get("/api/tasks/1").header("X-User-Id", USER_ID))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value("1"))
                 .andExpect(jsonPath("$.userId").value(USER_ID))
                 .andExpect(jsonPath("$.title").value("Hoc Spring Boot"))
-                .andExpect(jsonPath("$.status").value("TODO"))
-                .andExpect(jsonPath("$.priority").value("MEDIUM"));
+                .andExpect(jsonPath("$.status").value("todo"))
+                .andExpect(jsonPath("$.priority").value("medium"))
+                .andExpect(jsonPath("$.focusLog").isMap())
+                .andExpect(jsonPath("$.shortBreakLog").isMap())
+                .andExpect(jsonPath("$.longBreakLog").isMap());
     }
 
     @Test
@@ -89,12 +95,20 @@ class TaskControllerTest {
                 .content("""
                         {
                           "title": "Hoc Spring Boot",
-                          "status": "TODO",
-                          "priority": "MEDIUM"
+                          "status": "todo",
+                          "priority": "medium",
+                          "focusSeconds": 0,
+                          "focusLog": {},
+                          "shortBreakSeconds": 0,
+                          "shortBreakLog": {},
+                          "longBreakSeconds": 0,
+                          "longBreakLog": {}
                         }
                         """))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.title").value("Hoc Spring Boot"));
+                .andExpect(jsonPath("$.title").value("Hoc Spring Boot"))
+                .andExpect(jsonPath("$.status").value("todo"))
+                .andExpect(jsonPath("$.priority").value("medium"));
     }
 
     @Test
@@ -105,6 +119,8 @@ class TaskControllerTest {
         task.setTitle("Hoc Spring Boot");
         task.setStatus(TaskStatus.IN_PROGRESS);
         task.setPriority(TaskPriority.HIGH);
+        task.setFocusSeconds(180L);
+        task.setFocusLog(Map.of("2026-07-07", 180L));
 
         when(taskService.updateTask(eq(USER_ID), eq(1L), any(UpdateTaskRequest.class))).thenReturn(task);
 
@@ -113,13 +129,42 @@ class TaskControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                         {
-                          "status": "IN_PROGRESS",
-                          "priority": "HIGH"
+                          "status": "in-progress",
+                          "priority": "high",
+                          "focusSeconds": 180,
+                          "focusLog": {
+                            "2026-07-07": 180
+                          }
                         }
                         """))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("IN_PROGRESS"))
-                .andExpect(jsonPath("$.priority").value("HIGH"));
+                .andExpect(jsonPath("$.status").value("in-progress"))
+                .andExpect(jsonPath("$.priority").value("high"))
+                .andExpect(jsonPath("$.focusSeconds").value(180))
+                .andExpect(jsonPath("$.focusLog.2026-07-07").value(180));
+    }
+
+    @Test
+    void patchTask_shouldReturnOk() throws Exception {
+        Task task = new Task();
+        task.setId(1L);
+        task.setUserId(USER_ID);
+        task.setTitle("Hoc Spring Boot");
+        task.setStatus(TaskStatus.COMPLETED);
+        task.setPriority(TaskPriority.MEDIUM);
+
+        when(taskService.updateTask(eq(USER_ID), eq(1L), any(UpdateTaskRequest.class))).thenReturn(task);
+
+        mockMvc.perform(patch("/api/tasks/1")
+                .header("X-User-Id", USER_ID)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {
+                          "status": "completed"
+                        }
+                        """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("completed"));
     }
 
     @Test

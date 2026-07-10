@@ -1,11 +1,11 @@
 ---
 name: pages
-description: "Skill for the Pages area of Personal-Management. 159 symbols across 22 files."
+description: "Skill for the Pages area of Personal-Management. 172 symbols across 24 files."
 ---
 
 # Pages
 
-159 symbols | 22 files | Cohesion: 71%
+172 symbols | 24 files | Cohesion: 71%
 
 ## When to Use
 
@@ -18,13 +18,13 @@ description: "Skill for the Pages area of Personal-Management. 159 symbols acros
 | File | Symbols |
 |------|---------|
 | `frontend/src/pages/FocusTaskPage.jsx` | playTaskCompleteSound, completeTask, clampMinutes, createSecondsByMode, formatTimer (+40) |
-| `frontend/src/pages/WeeklyReportPage.jsx` | getVisibleCalendarRange, calendarRange, dropTaskOnDay, formatMonthTitle, buildWeekCalendarDays (+28) |
-| `frontend/src/utils/taskStats.js` | canCompleteTaskWithUpdates, getWeeklyChartData, getWeeklyFocusChartData, sumLogSeconds, formatFocusDuration (+7) |
+| `frontend/src/pages/WeeklyReportPage.jsx` | getVisibleCalendarRange, calendarRange, dropTaskOnDay, getCalendarStyle, CalendarHoverCard (+28) |
+| `frontend/src/utils/taskStats.js` | canCompleteTaskWithUpdates, normalizeNow, isTaskOverdue, isDueDateOverdue, canCompleteTask (+15) |
+| `frontend/src/pages/DashboardPage.jsx` | closeTaskForm, handleSubmit, handleUpdate, handleDelete, baseTasks (+5) |
 | `frontend/src/utils/taskSchedule.js` | getTaskRange, taskCoversDay, taskOverlapsRange, sortTasksByRange, getRangeDurationDays (+5) |
-| `frontend/src/pages/DashboardPage.jsx` | closeTaskForm, handleSubmit, handleUpdate, handleDelete, getStoredUpdateNotesVersion (+4) |
-| `frontend/src/utils/date.js` | startOfDay, startOfCurrentWeek, formatDate, getCurrentWeekDays, formatDateTime (+3) |
+| `frontend/src/utils/date.js` | startOfDay, formatDateTime, formatTaskDueDateTime, formatTaskDateTimeRange, startOfCurrentWeek (+3) |
+| `frontend/src/pages/TasksPage.jsx` | handleSubmit, handleUpdate, handleDelete, EisenhowerCard, activeTasks (+1) |
 | `frontend/src/utils/eisenhower.js` | normalizeNow, getRemainingDeadlineMs, isImportantTask, isUrgentTask, getEisenhowerQuadrantKey (+1) |
-| `frontend/src/pages/TasksPage.jsx` | handleSubmit, handleUpdate, handleDelete, EisenhowerCard, eisenhowerGroups |
 | `frontend/src/utils/authValidation.js` | validateEmail, validatePassword, validateLoginForm, validateRegisterForm, hasValidationErrors |
 | `frontend/src/hooks/useTasks.js` | unsubscribe, createTask, updateTask, deleteTask |
 
@@ -82,8 +82,9 @@ Start here when exploring this area:
 
 | Area | Connections |
 |------|-------------|
-| Components | 32 calls |
-| Ui | 8 calls |
+| Components | 18 calls |
+| Cluster_39 | 10 calls |
+| Ui | 9 calls |
 | GetTask | 7 calls |
 | Hooks | 4 calls |
 

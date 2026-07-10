@@ -1,11 +1,11 @@
 ---
 name: exception
-description: "Skill for the Exception area of Personal-Management. 7 symbols across 1 files."
+description: "Skill for the Exception area of Personal-Management. 8 symbols across 1 files."
 ---
 
 # Exception
 
-7 symbols | 1 files | Cohesion: 100%
+8 symbols | 1 files | Cohesion: 100%
 
 ## When to Use
 
@@ -17,7 +17,7 @@ description: "Skill for the Exception area of Personal-Management. 7 symbols acr
 
 | File | Symbols |
 |------|---------|
-| `backend/src/main/java/com/personalmanagement/backend/Exception/GlobalExceptionHandler.java` | handleValidation, handleMissingHeader, handleResponseStatus, handleUnexpected, buildResponse (+2) |
+| `backend/src/main/java/com/personalmanagement/backend/Exception/GlobalExceptionHandler.java` | handleValidation, handleMissingHeader, handleResponseStatus, handleIllegalArgument, handleUnexpected (+3) |
 
 ## Entry Points
 
@@ -26,8 +26,8 @@ Start here when exploring this area:
 - **`handleValidation`** (Method) — `backend/src/main/java/com/personalmanagement/backend/Exception/GlobalExceptionHandler.java:19`
 - **`handleMissingHeader`** (Method) — `backend/src/main/java/com/personalmanagement/backend/Exception/GlobalExceptionHandler.java:30`
 - **`handleResponseStatus`** (Method) — `backend/src/main/java/com/personalmanagement/backend/Exception/GlobalExceptionHandler.java:36`
-- **`handleUnexpected`** (Method) — `backend/src/main/java/com/personalmanagement/backend/Exception/GlobalExceptionHandler.java:41`
-- **`buildResponse`** (Method) — `backend/src/main/java/com/personalmanagement/backend/Exception/GlobalExceptionHandler.java:46`
+- **`handleIllegalArgument`** (Method) — `backend/src/main/java/com/personalmanagement/backend/Exception/GlobalExceptionHandler.java:41`
+- **`handleUnexpected`** (Method) — `backend/src/main/java/com/personalmanagement/backend/Exception/GlobalExceptionHandler.java:46`
 
 ## Key Symbols
 
@@ -36,10 +36,11 @@ Start here when exploring this area:
 | `handleValidation` | Method | `backend/src/main/java/com/personalmanagement/backend/Exception/GlobalExceptionHandler.java` | 19 |
 | `handleMissingHeader` | Method | `backend/src/main/java/com/personalmanagement/backend/Exception/GlobalExceptionHandler.java` | 30 |
 | `handleResponseStatus` | Method | `backend/src/main/java/com/personalmanagement/backend/Exception/GlobalExceptionHandler.java` | 36 |
-| `handleUnexpected` | Method | `backend/src/main/java/com/personalmanagement/backend/Exception/GlobalExceptionHandler.java` | 41 |
-| `buildResponse` | Method | `backend/src/main/java/com/personalmanagement/backend/Exception/GlobalExceptionHandler.java` | 46 |
-| `reasonPhrase` | Method | `backend/src/main/java/com/personalmanagement/backend/Exception/GlobalExceptionHandler.java` | 62 |
-| `requestPath` | Method | `backend/src/main/java/com/personalmanagement/backend/Exception/GlobalExceptionHandler.java` | 70 |
+| `handleIllegalArgument` | Method | `backend/src/main/java/com/personalmanagement/backend/Exception/GlobalExceptionHandler.java` | 41 |
+| `handleUnexpected` | Method | `backend/src/main/java/com/personalmanagement/backend/Exception/GlobalExceptionHandler.java` | 46 |
+| `buildResponse` | Method | `backend/src/main/java/com/personalmanagement/backend/Exception/GlobalExceptionHandler.java` | 51 |
+| `reasonPhrase` | Method | `backend/src/main/java/com/personalmanagement/backend/Exception/GlobalExceptionHandler.java` | 67 |
+| `requestPath` | Method | `backend/src/main/java/com/personalmanagement/backend/Exception/GlobalExceptionHandler.java` | 75 |
 
 ## How to Explore
 

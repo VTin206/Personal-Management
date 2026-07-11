@@ -1,103 +1,109 @@
-import {
-  addDoc,
-  collection,
-  deleteDoc,
-  doc,
-  onSnapshot,
-  query,
-  serverTimestamp,
-  updateDoc,
-  where,
-} from 'firebase/firestore'
-
-import { db } from '@/config/firebase'
+import { auth } from '@/config/firebase'
 import { toDate } from '@/utils/date'
 
-const TASKS_COLLECTION = 'tasks'
+const API_BASE_URL = (import.meta.env.VITE_API_URL ?? 'http://localhost:8080').replace(/\/$/, '')
 
-function requireDb() {
-  if (!db) {
-    throw new Error('Thiếu cấu hình Firebase. Hãy tạo file .env và điền Firebase config.')
+function requireCurrentUser() {
+  const currentUser = auth?.currentUser
+
+  if (!currentUser) {
+    throw new Error('Ban can dang nhap de quan ly task.')
   }
 
-  return db
+  return currentUser
 }
 
-function normalizeTask(documentSnapshot) {
-  const data = documentSnapshot.data()
-
+function normalizeTask(task) {
   return {
-    id: documentSnapshot.id,
-    ...data,
-    createdAt: toDate(data.createdAt),
-    completedAt: toDate(data.completedAt),
-    focusSeconds: Number.isFinite(data.focusSeconds) ? data.focusSeconds : 0,
-    focusLog: data.focusLog && typeof data.focusLog === 'object' ? data.focusLog : {},
-    shortBreakSeconds: Number.isFinite(data.shortBreakSeconds) ? data.shortBreakSeconds : 0,
-    shortBreakLog: data.shortBreakLog && typeof data.shortBreakLog === 'object' ? data.shortBreakLog : {},
-    longBreakSeconds: Number.isFinite(data.longBreakSeconds) ? data.longBreakSeconds : 0,
-    longBreakLog: data.longBreakLog && typeof data.longBreakLog === 'object' ? data.longBreakLog : {},
+    ...task,
+    createdAt: toDate(task.createdAt),
+    updatedAt: toDate(task.updatedAt),
+    completedAt: toDate(task.completedAt),
+    focusSeconds: Number.isFinite(task.focusSeconds) ? task.focusSeconds : 0,
+    focusLog: task.focusLog && typeof task.focusLog === 'object' ? task.focusLog : {},
+    shortBreakSeconds: Number.isFinite(task.shortBreakSeconds) ? task.shortBreakSeconds : 0,
+    shortBreakLog: task.shortBreakLog && typeof task.shortBreakLog === 'object' ? task.shortBreakLog : {},
+    longBreakSeconds: Number.isFinite(task.longBreakSeconds) ? task.longBreakSeconds : 0,
+    longBreakLog: task.longBreakLog && typeof task.longBreakLog === 'object' ? task.longBreakLog : {},
   }
 }
 
-function sortByNewestCreatedAt(tasks) {
-  return [...tasks].sort((a, b) => {
-    const left = a.createdAt?.getTime?.() ?? 0
-    const right = b.createdAt?.getTime?.() ?? 0
-    return right - left
-  })
+function toDateValue(value) {
+  if (!value || typeof value === 'string') return value ?? null
+
+  const date = toDate(value)
+  if (!date) return null
+
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
 }
 
-export function listenToUserTasks(userId, onNext, onError) {
-  const tasksQuery = query(
-    collection(requireDb(), TASKS_COLLECTION),
-    where('userId', '==', userId),
-  )
+function toTaskPayload(task) {
+  const payload = { ...task }
+  delete payload.id
+  delete payload.userId
+  delete payload.createdAt
+  delete payload.updatedAt
+  delete payload.completedAt
 
-  return onSnapshot(
-    tasksQuery,
-    (snapshot) => {
-      const tasks = snapshot.docs.map(normalizeTask)
-      onNext(sortByNewestCreatedAt(tasks))
+  if (Object.hasOwn(payload, 'startDate')) payload.startDate = toDateValue(payload.startDate)
+  if (Object.hasOwn(payload, 'dueDate')) payload.dueDate = toDateValue(payload.dueDate)
+
+  return payload
+}
+
+async function request(path, options = {}) {
+  const token = await requireCurrentUser().getIdToken()
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    ...options,
+    headers: {
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+      ...options.headers,
     },
-    onError,
-  )
-}
-
-export function createTask(userId, task) {
-  const completedAt = task.status === 'completed' ? serverTimestamp() : null
-
-  return addDoc(collection(requireDb(), TASKS_COLLECTION), {
-    title: task.title,
-    description: task.description,
-    status: task.status,
-    priority: task.priority,
-    startDate: task.startDate ?? task.dueDate,
-    startTime: task.startTime ?? '',
-    dueDate: task.dueDate,
-    dueTime: task.dueTime ?? '',
-    focusSeconds: 0,
-    focusLog: {},
-    shortBreakSeconds: 0,
-    shortBreakLog: {},
-    longBreakSeconds: 0,
-    longBreakLog: {},
-    createdAt: serverTimestamp(),
-    completedAt,
-    userId,
   })
-}
 
-export function updateTask(taskId, updates) {
-  const payload = { ...updates }
+  if (response.status === 204) return null
 
-  if (Object.hasOwn(payload, 'status')) {
-    payload.completedAt = payload.status === 'completed' ? serverTimestamp() : null
+  const contentType = response.headers.get('content-type') ?? ''
+  const payload = contentType.includes('application/json') ? await response.json() : null
+
+  if (!response.ok) {
+    const error = new Error(payload?.message ?? `Yeu cau that bai (${response.status}).`)
+    error.status = response.status
+    throw error
   }
 
-  return updateDoc(doc(requireDb(), TASKS_COLLECTION, taskId), payload)
+  return payload
+}
+
+export async function getTasks() {
+  const tasks = await request('/api/tasks')
+  return tasks.map(normalizeTask)
+}
+
+export async function createTask(task) {
+  const createdTask = await request('/api/tasks', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(toTaskPayload(task)),
+  })
+
+  return normalizeTask(createdTask)
+}
+
+export async function updateTask(taskId, updates) {
+  const updatedTask = await request(`/api/tasks/${taskId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(toTaskPayload(updates)),
+  })
+
+  return normalizeTask(updatedTask)
 }
 
 export function deleteTask(taskId) {
-  return deleteDoc(doc(requireDb(), TASKS_COLLECTION, taskId))
+  return request(`/api/tasks/${taskId}`, { method: 'DELETE' })
 }

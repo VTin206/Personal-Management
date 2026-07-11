@@ -11,6 +11,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 
 import java.util.List;
 import java.util.Map;
@@ -19,18 +20,22 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.JwtRequestPostProcessor;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import com.personalmanagement.backend.DTO.request.CreateTaskRequest;
 import com.personalmanagement.backend.DTO.request.UpdateTaskRequest;
 import com.personalmanagement.backend.Controller.TaskController;
+import com.personalmanagement.backend.Config.SecurityConfig;
 import com.personalmanagement.backend.Entity.Task;
 import com.personalmanagement.backend.Entity.TaskPriority;
 import com.personalmanagement.backend.Entity.TaskStatus;
 import com.personalmanagement.backend.Service.TaskService;
 
 @WebMvcTest(TaskController.class)
+@Import(SecurityConfig.class)
 class TaskControllerTest {
     private static final String USER_ID = "user-123";
 
@@ -44,15 +49,14 @@ class TaskControllerTest {
     void getAllTasks_shouldReturnOk() throws Exception {
         when(taskService.getAllTasks(USER_ID)).thenReturn(List.of());
 
-        mockMvc.perform(get("/api/tasks").header("X-User-Id", USER_ID))
+        mockMvc.perform(get("/api/tasks").with(authenticatedUser()))
                 .andExpect(status().isOk());
     }
 
     @Test
-    void getAllTasks_shouldReturnBadRequestWhenUserHeaderMissing() throws Exception {
+    void getAllTasks_shouldReturnUnauthorizedWhenAuthenticationMissing() throws Exception {
         mockMvc.perform(get("/api/tasks"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value("X-User-Id header is required"));
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -66,7 +70,7 @@ class TaskControllerTest {
 
         when(taskService.getTaskById(USER_ID, 1L)).thenReturn(task);
 
-        mockMvc.perform(get("/api/tasks/1").header("X-User-Id", USER_ID))
+        mockMvc.perform(get("/api/tasks/1").with(authenticatedUser()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value("1"))
                 .andExpect(jsonPath("$.userId").value(USER_ID))
@@ -90,7 +94,7 @@ class TaskControllerTest {
         when(taskService.createTask(eq(USER_ID), any(CreateTaskRequest.class))).thenReturn(task);
 
         mockMvc.perform(post("/api/tasks")
-                .header("X-User-Id", USER_ID)
+                .with(authenticatedUser())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                         {
@@ -125,7 +129,7 @@ class TaskControllerTest {
         when(taskService.updateTask(eq(USER_ID), eq(1L), any(UpdateTaskRequest.class))).thenReturn(task);
 
         mockMvc.perform(put("/api/tasks/1")
-                .header("X-User-Id", USER_ID)
+                .with(authenticatedUser())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                         {
@@ -156,7 +160,7 @@ class TaskControllerTest {
         when(taskService.updateTask(eq(USER_ID), eq(1L), any(UpdateTaskRequest.class))).thenReturn(task);
 
         mockMvc.perform(patch("/api/tasks/1")
-                .header("X-User-Id", USER_ID)
+                .with(authenticatedUser())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                         {
@@ -169,9 +173,13 @@ class TaskControllerTest {
 
     @Test
     void deleteTask_shouldReturnNoContent() throws Exception {
-        mockMvc.perform(delete("/api/tasks/1").header("X-User-Id", USER_ID))
+        mockMvc.perform(delete("/api/tasks/1").with(authenticatedUser()))
                 .andExpect(status().isNoContent());
 
         verify(taskService).deleteTask(USER_ID, 1L);
+    }
+
+    private JwtRequestPostProcessor authenticatedUser() {
+        return jwt().jwt(token -> token.subject(USER_ID));
     }
 }

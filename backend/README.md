@@ -38,9 +38,12 @@ src/main/java/com/personalmanagement/backend/
 
 ## Frontend CORS
 
+`/api/tasks/**` requires a Firebase ID token in the `Authorization: Bearer <token>` header. The API uses the token subject as the task owner, so clients must not send `X-User-Id`.
+
 By default, `/api/**` accepts requests from:
 
 - `http://localhost:5173`
 - `http://127.0.0.1:5173`
+- Vercel preview and production domains
 
-Update `app.cors.allowed-origins` in `src/main/resources/application.properties` if your Vite frontend uses another host or port.
+Set `FIREBASE_PROJECT_ID` and `CORS_ALLOWED_ORIGIN_PATTERNS` in the backend runtime environment for production. See `.env.example` for the expected values.

@@ -47,6 +47,18 @@ npm run dev:backend
 
 The backend defaults to `http://localhost:8080`.
 
+## Connect Frontend To Backend
+
+The task UI uses the Spring API and sends the Firebase ID token for each request. Configure `frontend/.env` with:
+
+```text
+VITE_API_URL=http://localhost:8080
+```
+
+For Vercel, set `VITE_API_URL` to the deployed backend URL, set the backend `FIREBASE_PROJECT_ID`, and allow the Vercel domain through `CORS_ALLOWED_ORIGIN_PATTERNS`.
+
+Existing task documents in Firestore are not copied automatically to PostgreSQL. Migrate them separately before switching production users to the API.
+
 ## GitNexus
 
 GitNexus is configured for project structure and impact analysis.

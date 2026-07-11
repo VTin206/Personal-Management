@@ -5,7 +5,7 @@ description: "Skill for the Service area of Personal-Management. 12 symbols acro
 
 # Service
 
-12 symbols | 5 files | Cohesion: 62%
+12 symbols | 5 files | Cohesion: 60%
 
 ## When to Use
 
@@ -44,11 +44,11 @@ Start here when exploring this area:
 | `defaultSeconds` | Method | `backend/src/main/java/com/personalmanagement/backend/Service/TaskService.java` | 210 |
 | `validateSeconds` | Method | `backend/src/main/java/com/personalmanagement/backend/Service/TaskService.java` | 218 |
 | `validateLog` | Method | `backend/src/main/java/com/personalmanagement/backend/Service/TaskService.java` | 226 |
-| `getAllTasks` | Method | `backend/src/main/java/com/personalmanagement/backend/Controller/TaskController.java` | 34 |
+| `getAllTasks` | Method | `backend/src/main/java/com/personalmanagement/backend/Controller/TaskController.java` | 33 |
 | `findByUserIdOrderByCreatedAtDesc` | Method | `backend/src/main/java/com/personalmanagement/backend/Repository/TaskRepository.java` | 10 |
 | `getAllTasks` | Method | `backend/src/main/java/com/personalmanagement/backend/Service/TaskService.java` | 30 |
 | `requireUserId` | Method | `backend/src/main/java/com/personalmanagement/backend/Service/TaskService.java` | 114 |
-| `getAllTasks_shouldReturnOk` | Method | `backend/src/test/java/com/personalmanagement/backend/TaskControllerTest.java` | 42 |
+| `getAllTasks_shouldReturnOk` | Method | `backend/src/test/java/com/personalmanagement/backend/TaskControllerTest.java` | 47 |
 
 ## Execution Flows
 
@@ -61,7 +61,7 @@ Start here when exploring this area:
 
 | Area | Connections |
 |------|-------------|
-| Entity | 4 calls |
+| Entity | 5 calls |
 
 ## How to Explore
 

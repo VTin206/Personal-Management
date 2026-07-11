@@ -1,11 +1,11 @@
 ---
 name: components
-description: "Skill for the Components area of Personal-Management. 32 symbols across 7 files."
+description: "Skill for the Components area of Personal-Management. 42 symbols across 9 files."
 ---
 
 # Components
 
-32 symbols | 7 files | Cohesion: 72%
+42 symbols | 9 files | Cohesion: 66%
 
 ## When to Use
 
@@ -17,13 +17,15 @@ description: "Skill for the Components area of Personal-Management. 32 symbols a
 
 | File | Symbols |
 |------|---------|
-| `frontend/src/components/UrgentDeadlineAlert.jsx` | getDismissedSignature, getDeliveredReminderKeys, storeDeliveredReminderKeys, getNotificationPermission, getReminderKey (+7) |
-| `frontend/src/utils/date.js` | endOfDay, endOfCurrentWeek, addDays, getInputDateValue, getInputTimeValue (+4) |
+| `frontend/src/components/UrgentDeadlineAlert.jsx` | getDismissedSignature, getDeliveredReminderKeys, storeDeliveredReminderKeys, getNotificationPermission, getReminderKey (+8) |
+| `frontend/src/utils/date.js` | endOfDay, endOfCurrentWeek, addDays, getInputDateValue, getInputTimeValue (+3) |
+| `frontend/src/utils/taskStats.js` | getTaskRemainingTimeLabel, normalizeNow, isDueDateOverdue, canCompleteTask, isActiveWorkTask (+3) |
 | `frontend/src/components/TaskForm.jsx` | createDefaultTask, createFormState, TaskForm, updateField, handleSubmit |
 | `frontend/src/services/streakService.js` | requireDb, getNumericStreak, recordLoginStreak |
+| `frontend/src/pages/TasksPage.jsx` | TasksPage, activeTasks |
 | `frontend/src/utils/taskSchedule.js` | getQuickExtendTaskUpdates |
-| `frontend/src/utils/taskStats.js` | getTaskRemainingTimeLabel |
-| `frontend/src/services/taskService.js` | normalizeTask |
+| `frontend/src/hooks/useNow.js` | useNow |
+| `frontend/src/hooks/useTasks.js` | useTasks |
 
 ## Entry Points
 
@@ -49,16 +51,16 @@ Start here when exploring this area:
 | `getInputTimeValue` | Function | `frontend/src/utils/date.js` | 138 |
 | `getQuickExtendTaskUpdates` | Function | `frontend/src/utils/taskSchedule.js` | 102 |
 | `UrgentDeadlineAlert` | Function | `frontend/src/components/UrgentDeadlineAlert.jsx` | 70 |
+| `useNow` | Function | `frontend/src/hooks/useNow.js` | 2 |
+| `useTasks` | Function | `frontend/src/hooks/useTasks.js` | 11 |
+| `TasksPage` | Function | `frontend/src/pages/TasksPage.jsx` | 75 |
 | `getTaskRemainingTimeLabel` | Function | `frontend/src/utils/taskStats.js` | 88 |
-| `handleSubmit` | Function | `frontend/src/components/TaskForm.jsx` | 58 |
-| `toDate` | Function | `frontend/src/utils/date.js` | 0 |
-| `normalizeTimeValue` | Function | `frontend/src/utils/date.js` | 14 |
-| `getDateTimeValue` | Function | `frontend/src/utils/date.js` | 83 |
-| `getTaskStartDateTime` | Function | `frontend/src/utils/date.js` | 95 |
-| `dismissAlert` | Function | `frontend/src/components/UrgentDeadlineAlert.jsx` | 100 |
-| `openTasksPage` | Function | `frontend/src/components/UrgentDeadlineAlert.jsx` | 112 |
-| `signature` | Function | `frontend/src/components/UrgentDeadlineAlert.jsx` | 77 |
-| `createDefaultTask` | Function | `frontend/src/components/TaskForm.jsx` | 18 |
+| `reminders` | Function | `frontend/src/components/UrgentDeadlineAlert.jsx` | 76 |
+| `activeTasks` | Function | `frontend/src/pages/TasksPage.jsx` | 84 |
+| `isDueDateOverdue` | Function | `frontend/src/utils/taskStats.js` | 40 |
+| `canCompleteTask` | Function | `frontend/src/utils/taskStats.js` | 47 |
+| `isActiveWorkTask` | Function | `frontend/src/utils/taskStats.js` | 61 |
+| `isUpcomingTask` | Function | `frontend/src/utils/taskStats.js` | 65 |
 
 ## Execution Flows
 
@@ -79,9 +81,8 @@ Start here when exploring this area:
 
 | Area | Connections |
 |------|-------------|
-| Pages | 6 calls |
-| Hooks | 2 calls |
-| Cluster_39 | 1 calls |
+| Pages | 12 calls |
+| Services | 1 calls |
 
 ## How to Explore
 

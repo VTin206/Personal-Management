@@ -1,11 +1,11 @@
 ---
 name: entity
-description: "Skill for the Entity area of Personal-Management. 68 symbols across 9 files."
+description: "Skill for the Entity area of Personal-Management. 70 symbols across 9 files."
 ---
 
 # Entity
 
-68 symbols | 9 files | Cohesion: 74%
+70 symbols | 9 files | Cohesion: 74%
 
 ## When to Use
 
@@ -19,9 +19,9 @@ description: "Skill for the Entity area of Personal-Management. 68 symbols acros
 |------|---------|
 | `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | getUserId, getId, getTitle, getDescription, getStatus (+33) |
 | `backend/src/main/java/com/personalmanagement/backend/Service/TaskService.java` | getTaskById, deleteTask, updateTask, toTaskEntity, requireTitle (+5) |
+| `backend/src/test/java/com/personalmanagement/backend/TaskControllerTest.java` | getTaskById_shouldReturnOk, createTask_shouldReturnCreated, updateTask_shouldReturnOk, patchTask_shouldReturnOk, deleteTask_shouldReturnNoContent (+1) |
 | `backend/src/main/java/com/personalmanagement/backend/Controller/TaskController.java` | getTaskById, deleteTask, updateTask, patchTask, createTask |
 | `backend/src/main/java/com/personalmanagement/backend/DTO/response/TaskResponse.java` | from, statusValue, priorityValue, formatTime |
-| `backend/src/test/java/com/personalmanagement/backend/TaskControllerTest.java` | getTaskById_shouldReturnOk, createTask_shouldReturnCreated, updateTask_shouldReturnOk, patchTask_shouldReturnOk |
 | `backend/src/main/java/com/personalmanagement/backend/Entity/TaskPriority.java` | getValue, fromValue |
 | `backend/src/main/java/com/personalmanagement/backend/Entity/TaskStatus.java` | getValue, fromValue |
 | `backend/src/test/java/com/personalmanagement/backend/TaskServiceTest.java` | createTask_shouldMapFrontendTaskContract, updateTask_shouldApplyFrontendPartialSessionUpdates |
@@ -32,8 +32,8 @@ description: "Skill for the Entity area of Personal-Management. 68 symbols acros
 Start here when exploring this area:
 
 - **`Task`** (Class) — `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java:23`
-- **`getTaskById`** (Method) — `backend/src/main/java/com/personalmanagement/backend/Controller/TaskController.java:41`
-- **`deleteTask`** (Method) — `backend/src/main/java/com/personalmanagement/backend/Controller/TaskController.java:71`
+- **`getTaskById`** (Method) — `backend/src/main/java/com/personalmanagement/backend/Controller/TaskController.java:40`
+- **`deleteTask`** (Method) — `backend/src/main/java/com/personalmanagement/backend/Controller/TaskController.java:70`
 - **`from`** (Method) — `backend/src/main/java/com/personalmanagement/backend/DTO/response/TaskResponse.java:35`
 - **`statusValue`** (Method) — `backend/src/main/java/com/personalmanagement/backend/DTO/response/TaskResponse.java:58`
 
@@ -42,8 +42,8 @@ Start here when exploring this area:
 | Symbol | Type | File | Line |
 |--------|------|------|------|
 | `Task` | Class | `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | 23 |
-| `getTaskById` | Method | `backend/src/main/java/com/personalmanagement/backend/Controller/TaskController.java` | 41 |
-| `deleteTask` | Method | `backend/src/main/java/com/personalmanagement/backend/Controller/TaskController.java` | 71 |
+| `getTaskById` | Method | `backend/src/main/java/com/personalmanagement/backend/Controller/TaskController.java` | 40 |
+| `deleteTask` | Method | `backend/src/main/java/com/personalmanagement/backend/Controller/TaskController.java` | 70 |
 | `from` | Method | `backend/src/main/java/com/personalmanagement/backend/DTO/response/TaskResponse.java` | 35 |
 | `statusValue` | Method | `backend/src/main/java/com/personalmanagement/backend/DTO/response/TaskResponse.java` | 58 |
 | `priorityValue` | Method | `backend/src/main/java/com/personalmanagement/backend/DTO/response/TaskResponse.java` | 62 |

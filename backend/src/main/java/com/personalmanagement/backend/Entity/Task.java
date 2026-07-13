@@ -20,16 +20,24 @@ import jakarta.persistence.MapKeyColumn;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 
 @Entity
-@Table(name = "tasks")
+@Table(
+        name = "tasks",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uk_tasks_user_legacy_id",
+                columnNames = {"user_id", "legacy_id"}))
 public class Task {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
+    @Column(name = "user_id", nullable = false)
     private String userId;
+
+    @Column(name = "legacy_id", length = 128)
+    private String legacyId;
 
     @Column(nullable = false, length = 200)
     private String title;
@@ -81,6 +89,14 @@ public class Task {
 
     public String getUserId() {
         return userId;
+    }
+
+    public String getLegacyId() {
+        return legacyId;
+    }
+
+    public void setLegacyId(String legacyId) {
+        this.legacyId = legacyId;
     }
 
     public Long getId() {
@@ -234,7 +250,9 @@ public class Task {
         if (createdAt == null) {
             createdAt = now;
         }
-        updatedAt = now;
+        if (updatedAt == null) {
+            updatedAt = now;
+        }
         syncCompletedAt(now);
     }
 

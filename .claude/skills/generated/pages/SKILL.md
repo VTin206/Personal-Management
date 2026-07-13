@@ -1,67 +1,67 @@
 ---
 name: pages
-description: "Skill for the Pages area of Personal-Management. 172 symbols across 24 files."
+description: "Skill for the Pages area of Personal-Management. 163 symbols across 23 files."
 ---
 
 # Pages
 
-172 symbols | 24 files | Cohesion: 71%
+163 symbols | 23 files | Cohesion: 66%
 
 ## When to Use
 
 - Working with code in `frontend/`
-- Understanding how unsubscribe, createTask, updateTask work
+- Understanding how calendarRange, dropTaskOnDay, startOfDay work
 - Modifying pages-related functionality
 
 ## Key Files
 
 | File | Symbols |
 |------|---------|
-| `frontend/src/pages/FocusTaskPage.jsx` | playTaskCompleteSound, completeTask, clampMinutes, createSecondsByMode, formatTimer (+40) |
-| `frontend/src/pages/WeeklyReportPage.jsx` | getVisibleCalendarRange, calendarRange, dropTaskOnDay, getCalendarStyle, CalendarHoverCard (+28) |
-| `frontend/src/utils/taskStats.js` | canCompleteTaskWithUpdates, normalizeNow, isTaskOverdue, isDueDateOverdue, canCompleteTask (+15) |
-| `frontend/src/pages/DashboardPage.jsx` | closeTaskForm, handleSubmit, handleUpdate, handleDelete, baseTasks (+5) |
+| `frontend/src/pages/FocusTaskPage.jsx` | getNextMode, getTimerAnchorSecondsLeft, createTimerAnchor, playSound, playSessionSwitchSound (+38) |
+| `frontend/src/pages/WeeklyReportPage.jsx` | getVisibleCalendarRange, calendarRange, dropTaskOnDay, formatMonthTitle, buildWeekCalendarDays (+28) |
+| `frontend/src/utils/taskStats.js` | isTaskOverdue, getWeeklyChartData, getWeeklyFocusChartData, sumLogSeconds, canCompleteTaskWithUpdates (+12) |
+| `frontend/src/utils/date.js` | startOfDay, startOfCurrentWeek, formatDate, getCurrentWeekDays, formatDateTime (+5) |
 | `frontend/src/utils/taskSchedule.js` | getTaskRange, taskCoversDay, taskOverlapsRange, sortTasksByRange, getRangeDurationDays (+5) |
-| `frontend/src/utils/date.js` | startOfDay, formatDateTime, formatTaskDueDateTime, formatTaskDateTimeRange, startOfCurrentWeek (+3) |
-| `frontend/src/pages/TasksPage.jsx` | handleSubmit, handleUpdate, handleDelete, EisenhowerCard, activeTasks (+1) |
-| `frontend/src/utils/eisenhower.js` | normalizeNow, getRemainingDeadlineMs, isImportantTask, isUrgentTask, getEisenhowerQuadrantKey (+1) |
+| `frontend/src/pages/DashboardPage.jsx` | baseTasks, closeTaskForm, handleSubmit, handleUpdate, handleDelete (+3) |
+| `frontend/src/utils/eisenhower.js` | normalizeNow, getRemainingDeadlineMs, isImportantTask, isUrgentTask, getEisenhowerQuadrantKey (+2) |
+| `frontend/src/pages/TasksPage.jsx` | EisenhowerCard, handleSubmit, handleUpdate, handleDelete, eisenhowerGroups (+1) |
 | `frontend/src/utils/authValidation.js` | validateEmail, validatePassword, validateLoginForm, validateRegisterForm, hasValidationErrors |
-| `frontend/src/hooks/useTasks.js` | unsubscribe, createTask, updateTask, deleteTask |
+| `frontend/src/pages/SettingsPage.jsx` | handleProfileSubmit, SettingsPage, updateProfileField |
 
 ## Entry Points
 
 Start here when exploring this area:
 
-- **`unsubscribe`** (Function) — `frontend/src/hooks/useTasks.js:21`
-- **`createTask`** (Function) — `frontend/src/hooks/useTasks.js:37`
-- **`updateTask`** (Function) — `frontend/src/hooks/useTasks.js:48`
-- **`deleteTask`** (Function) — `frontend/src/hooks/useTasks.js:49`
-- **`closeTaskForm`** (Function) — `frontend/src/pages/DashboardPage.jsx:246`
+- **`calendarRange`** (Function) — `frontend/src/pages/WeeklyReportPage.jsx:551`
+- **`dropTaskOnDay`** (Function) — `frontend/src/pages/WeeklyReportPage.jsx:588`
+- **`startOfDay`** (Function) — `frontend/src/utils/date.js:29`
+- **`getTaskRange`** (Function) — `frontend/src/utils/taskSchedule.js:19`
+- **`taskCoversDay`** (Function) — `frontend/src/utils/taskSchedule.js:30`
 
 ## Key Symbols
 
 | Symbol | Type | File | Line |
 |--------|------|------|------|
-| `unsubscribe` | Function | `frontend/src/hooks/useTasks.js` | 21 |
-| `createTask` | Function | `frontend/src/hooks/useTasks.js` | 37 |
-| `updateTask` | Function | `frontend/src/hooks/useTasks.js` | 48 |
-| `deleteTask` | Function | `frontend/src/hooks/useTasks.js` | 49 |
-| `closeTaskForm` | Function | `frontend/src/pages/DashboardPage.jsx` | 246 |
-| `handleSubmit` | Function | `frontend/src/pages/DashboardPage.jsx` | 251 |
-| `handleUpdate` | Function | `frontend/src/pages/DashboardPage.jsx` | 278 |
-| `handleDelete` | Function | `frontend/src/pages/DashboardPage.jsx` | 295 |
-| `completeTask` | Function | `frontend/src/pages/FocusTaskPage.jsx` | 1209 |
-| `handleProfileSubmit` | Function | `frontend/src/pages/SettingsPage.jsx` | 38 |
-| `handleSubmit` | Function | `frontend/src/pages/TasksPage.jsx` | 110 |
-| `handleUpdate` | Function | `frontend/src/pages/TasksPage.jsx` | 134 |
-| `handleDelete` | Function | `frontend/src/pages/TasksPage.jsx` | 151 |
-| `createTask` | Function | `frontend/src/services/taskService.js` | 66 |
-| `updateTask` | Function | `frontend/src/services/taskService.js` | 90 |
-| `deleteTask` | Function | `frontend/src/services/taskService.js` | 100 |
-| `getFirebaseErrorMessage` | Function | `frontend/src/utils/firebaseErrors.js` | 22 |
-| `canCompleteTaskWithUpdates` | Function | `frontend/src/utils/taskStats.js` | 51 |
 | `calendarRange` | Function | `frontend/src/pages/WeeklyReportPage.jsx` | 551 |
 | `dropTaskOnDay` | Function | `frontend/src/pages/WeeklyReportPage.jsx` | 588 |
+| `startOfDay` | Function | `frontend/src/utils/date.js` | 29 |
+| `getTaskRange` | Function | `frontend/src/utils/taskSchedule.js` | 19 |
+| `taskCoversDay` | Function | `frontend/src/utils/taskSchedule.js` | 30 |
+| `taskOverlapsRange` | Function | `frontend/src/utils/taskSchedule.js` | 37 |
+| `sortTasksByRange` | Function | `frontend/src/utils/taskSchedule.js` | 43 |
+| `moveTaskRangeToDate` | Function | `frontend/src/utils/taskSchedule.js` | 63 |
+| `resizeTaskStartToDate` | Function | `frontend/src/utils/taskSchedule.js` | 73 |
+| `resizeTaskEndToDate` | Function | `frontend/src/utils/taskSchedule.js` | 84 |
+| `getTaskDragDateUpdates` | Function | `frontend/src/utils/taskSchedule.js` | 95 |
+| `baseTasks` | Function | `frontend/src/pages/DashboardPage.jsx` | 210 |
+| `WeeklyReportPage` | Function | `frontend/src/pages/WeeklyReportPage.jsx` | 532 |
+| `startOfCurrentWeek` | Function | `frontend/src/utils/date.js` | 41 |
+| `formatDate` | Function | `frontend/src/utils/date.js` | 72 |
+| `getCurrentWeekDays` | Function | `frontend/src/utils/date.js` | 144 |
+| `isTaskOverdue` | Function | `frontend/src/utils/taskStats.js` | 34 |
+| `getWeeklyChartData` | Function | `frontend/src/utils/taskStats.js` | 234 |
+| `getWeeklyFocusChartData` | Function | `frontend/src/utils/taskStats.js` | 242 |
+| `sumLogSeconds` | Function | `frontend/src/utils/taskStats.js` | 245 |
 
 ## Execution Flows
 
@@ -82,14 +82,12 @@ Start here when exploring this area:
 
 | Area | Connections |
 |------|-------------|
-| Components | 18 calls |
-| Cluster_39 | 10 calls |
+| Components | 36 calls |
 | Ui | 9 calls |
 | GetTask | 7 calls |
-| Hooks | 4 calls |
 
 ## How to Explore
 
-1. `gitnexus_context({name: "unsubscribe"})` — see callers and callees
+1. `gitnexus_context({name: "calendarRange"})` — see callers and callees
 2. `gitnexus_query({query: "pages"})` — find related execution flows
 3. Read key files listed above for implementation details

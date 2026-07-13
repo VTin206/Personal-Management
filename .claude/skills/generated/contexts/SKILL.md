@@ -1,11 +1,11 @@
 ---
 name: contexts
-description: "Skill for the Contexts area of Personal-Management. 7 symbols across 4 files."
+description: "Skill for the Contexts area of Personal-Management. 5 symbols across 2 files."
 ---
 
 # Contexts
 
-7 symbols | 4 files | Cohesion: 86%
+5 symbols | 2 files | Cohesion: 80%
 
 ## When to Use
 
@@ -19,8 +19,6 @@ description: "Skill for the Contexts area of Personal-Management. 7 symbols acro
 |------|---------|
 | `frontend/src/contexts/AuthProvider.jsx` | serializeUser, AuthProvider, unsubscribe, updateUserProfile |
 | `frontend/src/services/authService.js` | updateUserProfile |
-| `frontend/src/contexts/SettingsProvider.jsx` | SettingsProvider |
-| `frontend/src/utils/settingsOptions.js` | getAccentOption |
 
 ## Entry Points
 
@@ -30,7 +28,6 @@ Start here when exploring this area:
 - **`unsubscribe`** (Function) — `frontend/src/contexts/AuthProvider.jsx:37`
 - **`updateUserProfile`** (Function) — `frontend/src/contexts/AuthProvider.jsx:61`
 - **`updateUserProfile`** (Function) — `frontend/src/services/authService.js:51`
-- **`SettingsProvider`** (Function) — `frontend/src/contexts/SettingsProvider.jsx:25`
 
 ## Key Symbols
 
@@ -40,8 +37,6 @@ Start here when exploring this area:
 | `unsubscribe` | Function | `frontend/src/contexts/AuthProvider.jsx` | 37 |
 | `updateUserProfile` | Function | `frontend/src/contexts/AuthProvider.jsx` | 61 |
 | `updateUserProfile` | Function | `frontend/src/services/authService.js` | 51 |
-| `SettingsProvider` | Function | `frontend/src/contexts/SettingsProvider.jsx` | 25 |
-| `getAccentOption` | Function | `frontend/src/utils/settingsOptions.js` | 47 |
 | `serializeUser` | Function | `frontend/src/contexts/AuthProvider.jsx` | 14 |
 
 ## Connected Areas

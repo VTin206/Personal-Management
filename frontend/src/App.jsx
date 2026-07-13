@@ -6,6 +6,7 @@ import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { isFirebaseConfigured } from '@/config/firebase'
 import { AuthProvider } from '@/contexts/AuthProvider'
 import { SettingsProvider } from '@/contexts/SettingsProvider'
+import { TaskProvider } from '@/contexts/TaskProvider'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { FirebaseSetupPage } from '@/pages/FirebaseSetupPage'
 import { LoginPage } from '@/pages/LoginPage'
@@ -25,24 +26,26 @@ function App() {
     <BrowserRouter>
       <SettingsProvider>
         <AuthProvider>
-          <Routes>
-            <Route element={<AuthRoute />}>
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/register" element={<RegisterPage />} />
-            </Route>
-
-            <Route element={<ProtectedRoute />}>
-              <Route element={<AppLayout />}>
-                <Route index element={<DashboardPage />} />
-                <Route path="/tasks" element={<TasksPage />} />
-                <Route path="/focus/:taskId" element={<FocusTaskPage />} />
-                <Route path="/weekly-report" element={<WeeklyReportPage />} />
-                <Route path="/settings" element={<SettingsPage />} />
+          <TaskProvider>
+            <Routes>
+              <Route element={<AuthRoute />}>
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/register" element={<RegisterPage />} />
               </Route>
-            </Route>
 
-            <Route path="*" element={<NotFoundPage />} />
-          </Routes>
+              <Route element={<ProtectedRoute />}>
+                <Route element={<AppLayout />}>
+                  <Route index element={<DashboardPage />} />
+                  <Route path="/tasks" element={<TasksPage />} />
+                  <Route path="/focus/:taskId" element={<FocusTaskPage />} />
+                  <Route path="/weekly-report" element={<WeeklyReportPage />} />
+                  <Route path="/settings" element={<SettingsPage />} />
+                </Route>
+              </Route>
+
+              <Route path="*" element={<NotFoundPage />} />
+            </Routes>
+          </TaskProvider>
         </AuthProvider>
       </SettingsProvider>
     </BrowserRouter>

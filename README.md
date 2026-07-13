@@ -57,7 +57,7 @@ VITE_API_URL=http://localhost:8080
 
 For Vercel, set `VITE_API_URL` to the deployed backend URL, set the backend `FIREBASE_PROJECT_ID`, and allow the Vercel domain through `CORS_ALLOWED_ORIGIN_PATTERNS`.
 
-Existing task documents in Firestore are not copied automatically to PostgreSQL. Migrate them separately before switching production users to the API.
+On the first authenticated API load, existing Firestore task documents are imported to PostgreSQL in idempotent batches. Each legacy document ID is stored with the user so retries cannot create duplicate tasks.
 
 ## GitNexus
 

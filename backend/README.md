@@ -40,6 +40,8 @@ src/main/java/com/personalmanagement/backend/
 
 `/api/tasks/**` requires a Firebase ID token in the `Authorization: Bearer <token>` header. The API uses the token subject as the task owner, so clients must not send `X-User-Id`.
 
+`POST /api/tasks/import` accepts batches of up to 100 legacy Firestore tasks. Imports are idempotent per user and legacy document ID and may include historical due dates.
+
 By default, `/api/**` accepts requests from:
 
 - `http://localhost:5173`

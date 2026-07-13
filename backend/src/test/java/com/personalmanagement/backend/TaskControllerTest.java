@@ -116,6 +116,28 @@ class TaskControllerTest {
     }
 
     @Test
+    void importTasks_shouldUseAuthenticatedUserAndReturnNoContent() throws Exception {
+        mockMvc.perform(post("/api/tasks/import")
+                .with(authenticatedUser())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        [
+                          {
+                            "legacyId": "firestore-task-1",
+                            "title": "Legacy task",
+                            "status": "completed",
+                            "priority": "high",
+                            "dueDate": "2025-01-01",
+                            "createdAt": "2025-01-01T01:00:00Z"
+                          }
+                        ]
+                        """))
+                .andExpect(status().isNoContent());
+
+        verify(taskService).importTasks(eq(USER_ID), any());
+    }
+
+    @Test
     void updateTask_shouldReturnOk() throws Exception {
         Task task = new Task();
         task.setId(1L);

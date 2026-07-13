@@ -16,11 +16,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.personalmanagement.backend.DTO.request.CreateTaskRequest;
+import com.personalmanagement.backend.DTO.request.ImportTaskRequest;
 import com.personalmanagement.backend.DTO.request.UpdateTaskRequest;
 import com.personalmanagement.backend.DTO.response.TaskResponse;
 import com.personalmanagement.backend.Service.TaskService;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Size;
 
 @RestController
 @RequestMapping("/api/tasks")
@@ -50,6 +52,15 @@ public class TaskController {
             @AuthenticationPrincipal Jwt jwt,
             @Valid @RequestBody CreateTaskRequest request) {
         return ResponseEntity.status(201).body(TaskResponse.from(taskService.createTask(jwt.getSubject(), request)));
+    }
+
+    @PostMapping("/import")
+    public ResponseEntity<Void> importTasks(
+            @AuthenticationPrincipal Jwt jwt,
+            @Valid @Size(max = 100, message = "At most 100 tasks can be imported at once")
+            @RequestBody List<@Valid ImportTaskRequest> requests) {
+        taskService.importTasks(jwt.getSubject(), requests);
+        return ResponseEntity.noContent().build();
     }
 
     @PutMapping("/{id}")

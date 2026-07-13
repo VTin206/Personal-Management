@@ -54,14 +54,18 @@ public class SecurityConfig {
         NimbusJwtDecoder decoder = NimbusJwtDecoder.withJwkSetUri(FIREBASE_JWK_SET_URI).build();
         String issuer = "https://securetoken.google.com/" + firebaseProjectId;
 
-        OAuth2TokenValidator<Jwt> audienceValidator = jwt -> jwt.getAudience().contains(firebaseProjectId)
+        decoder.setJwtValidator(firebaseTokenValidator(firebaseProjectId, issuer));
+        return decoder;
+    }
+
+    static OAuth2TokenValidator<Jwt> firebaseTokenValidator(String projectId, String issuer) {
+        OAuth2TokenValidator<Jwt> audienceValidator = jwt -> jwt.getAudience().contains(projectId)
                 ? OAuth2TokenValidatorResult.success()
                 : OAuth2TokenValidatorResult.failure(
                         new OAuth2Error("invalid_token", "Firebase token audience is invalid", null));
 
-        decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
+        return new DelegatingOAuth2TokenValidator<>(
                 JwtValidators.createDefaultWithIssuer(issuer),
-                audienceValidator));
-        return decoder;
+                audienceValidator);
     }
 }

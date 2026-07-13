@@ -11,4 +11,6 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
     List<Task> findByUserIdOrderByCreatedAtDesc(String userId);
 
     Optional<Task> findByIdAndUserId(Long id, String userId);
+
+    boolean existsByUserIdAndLegacyId(String userId, String legacyId);
 }

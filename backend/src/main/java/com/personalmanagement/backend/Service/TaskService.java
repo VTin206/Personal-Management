@@ -7,10 +7,12 @@ import java.util.Map;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.personalmanagement.backend.DTO.request.CreateTaskRequest;
+import com.personalmanagement.backend.DTO.request.ImportTaskRequest;
 import com.personalmanagement.backend.DTO.request.UpdateTaskRequest;
 import com.personalmanagement.backend.Entity.Task;
 import com.personalmanagement.backend.Entity.TaskPriority;
@@ -92,6 +94,25 @@ public class TaskService {
         taskRepository.delete(task);
     }
 
+    @Transactional
+    public void importTasks(String userId, List<ImportTaskRequest> requests) {
+        String normalizedUserId = requireUserId(userId);
+
+        for (ImportTaskRequest request : requests) {
+            String legacyId = requireLegacyId(request.legacyId());
+            if (taskRepository.existsByUserIdAndLegacyId(normalizedUserId, legacyId)) {
+                continue;
+            }
+
+            validateSchedule(request.startDate(), request.startTime(), request.dueDate(), request.dueTime());
+
+            Task task = toImportedTask(request);
+            task.setUserId(normalizedUserId);
+            task.setLegacyId(legacyId);
+            taskRepository.save(task);
+        }
+    }
+
     private Task toTaskEntity(CreateTaskRequest request) {
         Task task = new Task();
         task.setTitle(requireTitle(request.title()));
@@ -112,12 +133,48 @@ public class TaskService {
         return task;
     }
 
+    private Task toImportedTask(ImportTaskRequest request) {
+        Task task = new Task();
+        task.setTitle(requireTitle(request.title()));
+        task.setDescription(validateDescription(request.description()));
+        task.setStatus(request.status() == null ? TaskStatus.TODO : TaskStatus.fromValue(request.status()));
+        task.setPriority(request.priority() == null ? TaskPriority.MEDIUM : TaskPriority.fromValue(request.priority()));
+        task.setStartDate(request.startDate());
+        task.setStartTime(request.startTime());
+        task.setDueDate(request.dueDate());
+        task.setDueTime(request.dueTime());
+        task.setFocusSeconds(defaultSeconds(request.focusSeconds(), "focusSeconds"));
+        task.setFocusLog(validateLog(request.focusLog(), "focusLog"));
+        task.setShortBreakSeconds(defaultSeconds(request.shortBreakSeconds(), "shortBreakSeconds"));
+        task.setShortBreakLog(validateLog(request.shortBreakLog(), "shortBreakLog"));
+        task.setLongBreakSeconds(defaultSeconds(request.longBreakSeconds(), "longBreakSeconds"));
+        task.setLongBreakLog(validateLog(request.longBreakLog(), "longBreakLog"));
+        task.setCreatedAt(request.createdAt());
+        task.setUpdatedAt(request.updatedAt());
+        task.setCompletedAt(request.completedAt());
+        return task;
+    }
+
     private String requireUserId(String userId) {
         if (!StringUtils.hasText(userId)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "X-User-Id header is required");
         }
 
         return userId.trim();
+    }
+
+    private String requireLegacyId(String legacyId) {
+        if (!StringUtils.hasText(legacyId)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Legacy task ID is required");
+        }
+
+        String normalized = legacyId.trim();
+        if (normalized.length() > 128) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Legacy task ID must be at most 128 characters");
+        }
+
+        return normalized;
     }
 
     private String requireTitle(String title) {

@@ -1,48 +1,49 @@
 ---
 name: pages
-description: "Skill for the Pages area of Personal-Management. 167 symbols across 23 files."
+description: "Skill for the Pages area of Personal-Management. 163 symbols across 23 files."
 ---
 
 # Pages
 
-167 symbols | 23 files | Cohesion: 69%
+163 symbols | 23 files | Cohesion: 66%
 
 ## When to Use
 
 - Working with code in `frontend/`
-- Understanding how calendarRange, startOfDay, getTaskRange work
+- Understanding how calendarRange, dropTaskOnDay, startOfDay work
 - Modifying pages-related functionality
 
 ## Key Files
 
 | File | Symbols |
 |------|---------|
-| `frontend/src/pages/FocusTaskPage.jsx` | getNextMode, getTimerAnchorSecondsLeft, createTimerAnchor, playSound, playSessionSwitchSound (+40) |
-| `frontend/src/pages/WeeklyReportPage.jsx` | getVisibleCalendarRange, parseCalendarDragPayload, CalendarDayCell, calendarRange, formatMonthTitle (+30) |
-| `frontend/src/utils/taskStats.js` | isTaskOverdue, getWeeklyChartData, getWeeklyFocusChartData, sumLogSeconds, canCompleteTaskWithUpdates (+11) |
+| `frontend/src/pages/FocusTaskPage.jsx` | getNextMode, getTimerAnchorSecondsLeft, createTimerAnchor, playSound, playSessionSwitchSound (+38) |
+| `frontend/src/pages/WeeklyReportPage.jsx` | getVisibleCalendarRange, calendarRange, dropTaskOnDay, formatMonthTitle, buildWeekCalendarDays (+28) |
+| `frontend/src/utils/taskStats.js` | isTaskOverdue, getWeeklyChartData, getWeeklyFocusChartData, sumLogSeconds, canCompleteTaskWithUpdates (+12) |
 | `frontend/src/utils/date.js` | startOfDay, startOfCurrentWeek, formatDate, getCurrentWeekDays, formatDateTime (+5) |
 | `frontend/src/utils/taskSchedule.js` | getTaskRange, taskCoversDay, taskOverlapsRange, sortTasksByRange, getRangeDurationDays (+5) |
-| `frontend/src/pages/DashboardPage.jsx` | baseTasks, handleSubmit, handleUpdate, closeTaskForm, handleDelete (+5) |
+| `frontend/src/pages/DashboardPage.jsx` | baseTasks, closeTaskForm, handleSubmit, handleUpdate, handleDelete (+3) |
 | `frontend/src/utils/eisenhower.js` | normalizeNow, getRemainingDeadlineMs, isImportantTask, isUrgentTask, getEisenhowerQuadrantKey (+2) |
-| `frontend/src/pages/TasksPage.jsx` | EisenhowerCard, handleSubmit, handleUpdate, eisenhowerGroups, sortedTasks (+1) |
+| `frontend/src/pages/TasksPage.jsx` | EisenhowerCard, handleSubmit, handleUpdate, handleDelete, eisenhowerGroups (+1) |
 | `frontend/src/utils/authValidation.js` | validateEmail, validatePassword, validateLoginForm, validateRegisterForm, hasValidationErrors |
-| `frontend/src/pages/LoginPage.jsx` | LoginPage, updateField, handleSubmit |
+| `frontend/src/pages/SettingsPage.jsx` | handleProfileSubmit, SettingsPage, updateProfileField |
 
 ## Entry Points
 
 Start here when exploring this area:
 
 - **`calendarRange`** (Function) — `frontend/src/pages/WeeklyReportPage.jsx:551`
+- **`dropTaskOnDay`** (Function) — `frontend/src/pages/WeeklyReportPage.jsx:588`
 - **`startOfDay`** (Function) — `frontend/src/utils/date.js:29`
 - **`getTaskRange`** (Function) — `frontend/src/utils/taskSchedule.js:19`
 - **`taskCoversDay`** (Function) — `frontend/src/utils/taskSchedule.js:30`
-- **`taskOverlapsRange`** (Function) — `frontend/src/utils/taskSchedule.js:37`
 
 ## Key Symbols
 
 | Symbol | Type | File | Line |
 |--------|------|------|------|
 | `calendarRange` | Function | `frontend/src/pages/WeeklyReportPage.jsx` | 551 |
+| `dropTaskOnDay` | Function | `frontend/src/pages/WeeklyReportPage.jsx` | 588 |
 | `startOfDay` | Function | `frontend/src/utils/date.js` | 29 |
 | `getTaskRange` | Function | `frontend/src/utils/taskSchedule.js` | 19 |
 | `taskCoversDay` | Function | `frontend/src/utils/taskSchedule.js` | 30 |
@@ -61,7 +62,6 @@ Start here when exploring this area:
 | `getWeeklyChartData` | Function | `frontend/src/utils/taskStats.js` | 234 |
 | `getWeeklyFocusChartData` | Function | `frontend/src/utils/taskStats.js` | 242 |
 | `sumLogSeconds` | Function | `frontend/src/utils/taskStats.js` | 245 |
-| `AppLayout` | Function | `frontend/src/components/AppLayout.jsx` | 46 |
 
 ## Execution Flows
 
@@ -82,10 +82,9 @@ Start here when exploring this area:
 
 | Area | Connections |
 |------|-------------|
-| Components | 33 calls |
-| Ui | 10 calls |
+| Components | 36 calls |
+| Ui | 9 calls |
 | GetTask | 7 calls |
-| Services | 3 calls |
 
 ## How to Explore
 

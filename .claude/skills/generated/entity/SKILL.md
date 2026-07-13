@@ -1,66 +1,65 @@
 ---
 name: entity
-description: "Skill for the Entity area of Personal-Management. 70 symbols across 9 files."
+description: "Skill for the Entity area of Personal-Management. 68 symbols across 8 files."
 ---
 
 # Entity
 
-70 symbols | 9 files | Cohesion: 74%
+68 symbols | 8 files | Cohesion: 78%
 
 ## When to Use
 
 - Working with code in `backend/`
-- Understanding how Task, getTaskById, deleteTask work
+- Understanding how getTaskById, updateTask, patchTask work
 - Modifying entity-related functionality
 
 ## Key Files
 
 | File | Symbols |
 |------|---------|
-| `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | getUserId, getId, getTitle, getDescription, getStatus (+33) |
-| `backend/src/main/java/com/personalmanagement/backend/Service/TaskService.java` | getTaskById, deleteTask, updateTask, toTaskEntity, requireTitle (+5) |
-| `backend/src/test/java/com/personalmanagement/backend/TaskControllerTest.java` | getTaskById_shouldReturnOk, createTask_shouldReturnCreated, updateTask_shouldReturnOk, patchTask_shouldReturnOk, deleteTask_shouldReturnNoContent (+1) |
-| `backend/src/main/java/com/personalmanagement/backend/Controller/TaskController.java` | getTaskById, deleteTask, updateTask, patchTask, createTask |
+| `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | getUserId, getId, getTitle, getDescription, getStatus (+34) |
+| `backend/src/main/java/com/personalmanagement/backend/Service/TaskService.java` | getTaskById, deleteTask, updateTask, toTaskEntity, toImportedTask (+8) |
+| `backend/src/main/java/com/personalmanagement/backend/Controller/TaskController.java` | getTaskById, updateTask, patchTask, deleteTask |
 | `backend/src/main/java/com/personalmanagement/backend/DTO/response/TaskResponse.java` | from, statusValue, priorityValue, formatTime |
+| `backend/src/test/java/com/personalmanagement/backend/TaskServiceTest.java` | createTask_shouldMapFrontendTaskContract, updateTask_shouldApplyFrontendPartialSessionUpdates, importTasks_shouldPreserveLegacyDataAndAllowPastDueDate |
 | `backend/src/main/java/com/personalmanagement/backend/Entity/TaskPriority.java` | getValue, fromValue |
 | `backend/src/main/java/com/personalmanagement/backend/Entity/TaskStatus.java` | getValue, fromValue |
-| `backend/src/test/java/com/personalmanagement/backend/TaskServiceTest.java` | createTask_shouldMapFrontendTaskContract, updateTask_shouldApplyFrontendPartialSessionUpdates |
 | `backend/src/main/java/com/personalmanagement/backend/Repository/TaskRepository.java` | findByIdAndUserId |
 
 ## Entry Points
 
 Start here when exploring this area:
 
-- **`Task`** (Class) — `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java:23`
-- **`getTaskById`** (Method) — `backend/src/main/java/com/personalmanagement/backend/Controller/TaskController.java:40`
-- **`deleteTask`** (Method) — `backend/src/main/java/com/personalmanagement/backend/Controller/TaskController.java:70`
+- **`getTaskById`** (Method) — `backend/src/main/java/com/personalmanagement/backend/Controller/TaskController.java:42`
+- **`updateTask`** (Method) — `backend/src/main/java/com/personalmanagement/backend/Controller/TaskController.java:65`
+- **`patchTask`** (Method) — `backend/src/main/java/com/personalmanagement/backend/Controller/TaskController.java:73`
+- **`deleteTask`** (Method) — `backend/src/main/java/com/personalmanagement/backend/Controller/TaskController.java:81`
 - **`from`** (Method) — `backend/src/main/java/com/personalmanagement/backend/DTO/response/TaskResponse.java:35`
-- **`statusValue`** (Method) — `backend/src/main/java/com/personalmanagement/backend/DTO/response/TaskResponse.java:58`
 
 ## Key Symbols
 
 | Symbol | Type | File | Line |
 |--------|------|------|------|
-| `Task` | Class | `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | 23 |
-| `getTaskById` | Method | `backend/src/main/java/com/personalmanagement/backend/Controller/TaskController.java` | 40 |
-| `deleteTask` | Method | `backend/src/main/java/com/personalmanagement/backend/Controller/TaskController.java` | 70 |
+| `getTaskById` | Method | `backend/src/main/java/com/personalmanagement/backend/Controller/TaskController.java` | 42 |
+| `updateTask` | Method | `backend/src/main/java/com/personalmanagement/backend/Controller/TaskController.java` | 65 |
+| `patchTask` | Method | `backend/src/main/java/com/personalmanagement/backend/Controller/TaskController.java` | 73 |
+| `deleteTask` | Method | `backend/src/main/java/com/personalmanagement/backend/Controller/TaskController.java` | 81 |
 | `from` | Method | `backend/src/main/java/com/personalmanagement/backend/DTO/response/TaskResponse.java` | 35 |
 | `statusValue` | Method | `backend/src/main/java/com/personalmanagement/backend/DTO/response/TaskResponse.java` | 58 |
 | `priorityValue` | Method | `backend/src/main/java/com/personalmanagement/backend/DTO/response/TaskResponse.java` | 62 |
 | `formatTime` | Method | `backend/src/main/java/com/personalmanagement/backend/DTO/response/TaskResponse.java` | 66 |
-| `getUserId` | Method | `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | 81 |
-| `getId` | Method | `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | 85 |
-| `getTitle` | Method | `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | 93 |
-| `getDescription` | Method | `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | 101 |
-| `getStatus` | Method | `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | 109 |
-| `getPriority` | Method | `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | 117 |
-| `getFocusSeconds` | Method | `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | 157 |
-| `getFocusLog` | Method | `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | 165 |
-| `getShortBreakSeconds` | Method | `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | 173 |
-| `getShortBreakLog` | Method | `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | 181 |
-| `getLongBreakSeconds` | Method | `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | 189 |
-| `getLongBreakLog` | Method | `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | 197 |
-| `getCreatedAt` | Method | `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | 205 |
+| `getUserId` | Method | `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | 89 |
+| `getId` | Method | `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | 101 |
+| `getTitle` | Method | `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | 109 |
+| `getDescription` | Method | `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | 117 |
+| `getStatus` | Method | `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | 125 |
+| `getPriority` | Method | `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | 133 |
+| `getFocusSeconds` | Method | `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | 173 |
+| `getFocusLog` | Method | `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | 181 |
+| `getShortBreakSeconds` | Method | `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | 189 |
+| `getShortBreakLog` | Method | `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | 197 |
+| `getLongBreakSeconds` | Method | `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | 205 |
+| `getLongBreakLog` | Method | `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | 213 |
 
 ## Execution Flows
 
@@ -81,10 +80,11 @@ Start here when exploring this area:
 
 | Area | Connections |
 |------|-------------|
-| Service | 9 calls |
+| Backend | 18 calls |
+| Service | 4 calls |
 
 ## How to Explore
 
-1. `gitnexus_context({name: "Task"})` — see callers and callees
+1. `gitnexus_context({name: "getTaskById"})` — see callers and callees
 2. `gitnexus_query({query: "entity"})` — find related execution flows
 3. Read key files listed above for implementation details

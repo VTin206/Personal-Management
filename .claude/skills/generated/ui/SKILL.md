@@ -1,11 +1,11 @@
 ---
 name: ui
-description: "Skill for the Ui area of Personal-Management. 26 symbols across 13 files."
+description: "Skill for the Ui area of Personal-Management. 28 symbols across 13 files."
 ---
 
 # Ui
 
-26 symbols | 13 files | Cohesion: 83%
+28 symbols | 13 files | Cohesion: 84%
 
 ## When to Use
 
@@ -20,7 +20,7 @@ description: "Skill for the Ui area of Personal-Management. 26 symbols across 13
 | `frontend/src/components/ui/card.jsx` | Card, CardHeader, CardTitle, CardDescription, CardContent (+1) |
 | `frontend/src/components/ui/select.jsx` | SelectTrigger, SelectScrollUpButton, SelectScrollDownButton, SelectContent, SelectItem |
 | `frontend/src/pages/FocusTaskPage.jsx` | FocusBackground, FocusModeButton, FocusThemeOption, FocusIconButton |
-| `frontend/src/pages/WeeklyReportPage.jsx` | QuadrantLegend, CalendarViewSegment |
+| `frontend/src/pages/WeeklyReportPage.jsx` | parseCalendarDragPayload, QuadrantLegend, CalendarViewSegment, CalendarDayCell |
 | `frontend/src/components/AppLayout.jsx` | NavigationLink |
 | `frontend/src/components/StatCard.jsx` | StatCard |
 | `frontend/src/components/ui/badge.jsx` | Badge |
@@ -59,6 +59,12 @@ Start here when exploring this area:
 | `SelectContent` | Function | `frontend/src/components/ui/select.jsx` | 49 |
 | `SelectItem` | Function | `frontend/src/components/ui/select.jsx` | 73 |
 | `Textarea` | Function | `frontend/src/components/ui/textarea.jsx` | 4 |
+
+## Connected Areas
+
+| Area | Connections |
+|------|-------------|
+| Pages | 1 calls |
 
 ## How to Explore
 

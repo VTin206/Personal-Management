@@ -33,10 +33,14 @@ jobs:
         with:
           fail-on-severity: high
 
-  validate:
-    name: Validate App
+  frontend:
+    name: Frontend CI
     runs-on: ubuntu-latest
     timeout-minutes: 10
+
+    defaults:
+      run:
+        working-directory: frontend
 
     env:
       CI: true
@@ -50,32 +54,50 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
-        working-directory: frontend
         run: npm ci
 
-      - name: Audit production dependencies
-        working-directory: frontend
-        run: npm audit --omit=dev --audit-level=high
-
-      - name: Run lint with zero warnings
-        working-directory: frontend
+      - name: Run lint
         run: npm run lint -- --max-warnings=0
 
-      - name: Run tests if configured
-        working-directory: frontend
-        run: npm test --if-present
+      - name: Run tests
+        run: npm run test
 
-      - name: Build app
-        working-directory: frontend
+      - name: Build production bundle
         run: npm run build
 
-      - name: Verify build output
-        run: test -s frontend/dist/index.html
+      - name: Verify dist output
+        run: test -s dist/index.html
+
+      - name: Upload frontend dist
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist
+          if-no-files-found: error
+          retention-days: 7
+
+  backend:
+    name: Backend CI
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    defaults:
+      run:
+        working-directory: backend
+
+    env:
+      CI: true
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -84,16 +106,31 @@ jobs:
           java-version: 21
           cache: maven
 
-      - name: Run backend tests
-        working-directory: backend
-        run: |
-          chmod +x mvnw
-          ./mvnw test
+      - name: Make Maven Wrapper executable
+        run: chmod +x mvnw
 
-      - name: Upload build artifact
+      - name: Compile
+        env:
+          SPRING_PROFILES_ACTIVE: ci
+        run: ./mvnw -B -ntp compile
+
+      - name: Run tests
+        env:
+          SPRING_PROFILES_ACTIVE: ci
+        run: ./mvnw -B -ntp test
+
+      - name: Package application
+        env:
+          SPRING_PROFILES_ACTIVE: ci
+        run: ./mvnw -B -ntp package -DskipTests
+
+      - name: Verify jar output
+        run: test -n "$(find target -maxdepth 1 -name '*.jar' -print -quit)"
+
+      - name: Upload backend jar
         uses: actions/upload-artifact@v4
         with:
-          name: personal-management-dist
-          path: frontend/dist
+          name: backend-jar
+          path: backend/target/*.jar
           if-no-files-found: error
           retention-days: 7

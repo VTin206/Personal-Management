@@ -89,7 +89,7 @@ const UPDATE_NOTES = [
     icon: Wrench,
     items: [
       'Task hết hạn không còn làm lệch màu các thanh trong lịch.',
-      'Ma trận Eisenhower hiển thị đúng bốn nhóm ưu tiên.',
+      'Bảng công việc hiển thị rõ mức ưu tiên, trạng thái, deadline và giờ học.',
       'Task hoàn thành được ẩn khỏi lịch làm việc.',
     ],
   },
@@ -98,14 +98,14 @@ const UPDATE_NOTES = [
     icon: Rocket,
     items: [
       'Thanh nhạc nền trong Focus gọn hơn và chuyên nghiệp hơn.',
-      'Thời gian nghỉ ngắn và nghỉ dài cũng được tính khi bấm Bắt đầu.',
+      'Focus chuyển sang tích lũy giờ học thật cho từng task.',
       'Gợi ý áp dụng AI được đặt ngay trong Dashboard.',
     ],
   },
 ]
 
 const AI_SUGGESTIONS = [
-  'Tự phân loại task vào ma trận Eisenhower từ tiêu đề, mô tả và deadline.',
+  'Gợi ý thứ tự task trong bảng dựa trên deadline, mức ưu tiên và giờ học đã tích lũy.',
   'Tạo lịch tuần tự động dựa trên deadline, mức ưu tiên và giờ tập trung còn trống.',
   'Dự báo nguy cơ trễ hạn rồi gợi ý chia nhỏ task hoặc gia hạn hợp lý.',
   'Tóm tắt báo cáo tuần bằng ngôn ngữ tự nhiên và đề xuất tuần sau nên tập trung vào đâu.',

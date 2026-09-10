@@ -1,13 +1,18 @@
 import { useMemo, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Search } from 'lucide-react'
+import {
+  CheckCircle2,
+  Pencil,
+  Search,
+  Timer,
+  Trash2,
+} from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
 import { EmptyState } from '@/components/EmptyState'
-import { TaskCard } from '@/components/TaskCard'
 import { TaskForm } from '@/components/TaskForm'
 import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
   Select,
@@ -16,60 +21,102 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { useTasks } from '@/hooks/useTasks'
 import { useNow } from '@/hooks/useNow'
+import { useTasks } from '@/hooks/useTasks'
 import { formatTaskDueDateTime } from '@/utils/date'
-import {
-  EISENHOWER_QUADRANTS,
-  groupTasksByEisenhower,
-  sortTasksByPriorityAndDeadline,
-} from '@/utils/eisenhower'
+import { sortTasksByPriorityAndDeadline } from '@/utils/eisenhower'
 import { getFirebaseErrorMessage } from '@/utils/firebaseErrors'
-import { canCompleteTaskWithUpdates, isActiveWorkTask } from '@/utils/taskStats'
+import {
+  canCompleteTaskWithUpdates,
+  formatFocusDuration,
+  getTaskFocusSeconds,
+  isActiveWorkTask,
+} from '@/utils/taskStats'
 import {
   getPriorityLabel,
+  getStatusLabel,
   PRIORITY_BADGE_VARIANTS,
+  STATUS_BADGE_VARIANTS,
   TASK_STATUSES,
 } from '@/utils/taskOptions'
 
-function EisenhowerCard({ quadrant, tasks, onFocus }) {
+function TasksTable({ tasks, onEdit, onUpdate, onDelete, onFocus }) {
   return (
-    <Card className="overflow-hidden">
-      <CardHeader className={quadrant.tone}>
-        <CardTitle className="flex items-center justify-between gap-3 text-base">
-          <span>{quadrant.title}</span>
-          <span className="rounded-md bg-white/55 px-2 py-0.5 text-sm">{tasks.length}</span>
-        </CardTitle>
-        <p className="text-sm font-semibold opacity-80">{quadrant.description}</p>
-      </CardHeader>
-      <CardContent className="grid gap-2 pt-4">
-        {tasks.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Không có task trong nhóm này.</p>
-        ) : (
-          tasks.slice(0, 4).map((task) => (
-            <button
-              className="rounded-lg border bg-card-soft p-3 text-left transition-colors hover:border-primary"
-              key={task.id}
-              type="button"
-              onClick={() => onFocus(task)}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="break-words text-sm font-bold">{task.title}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">Hạn: {formatTaskDueDateTime(task)}</p>
-                </div>
-                <Badge variant={PRIORITY_BADGE_VARIANTS[task.priority]}>
-                  {getPriorityLabel(task.priority)}
-                </Badge>
-              </div>
-            </button>
-          ))
-        )}
-        {tasks.length > 4 ? (
-          <p className="text-xs font-semibold text-muted-foreground">+{tasks.length - 4} task khác</p>
-        ) : null}
-      </CardContent>
-    </Card>
+    <div className="overflow-hidden rounded-lg border bg-card shadow-soft">
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[860px] text-left text-sm">
+          <thead className="bg-card-soft text-xs font-black uppercase text-muted-foreground">
+            <tr>
+              <th className="px-4 py-3">Công việc</th>
+              <th className="px-4 py-3">Ưu tiên</th>
+              <th className="px-4 py-3">Trạng thái</th>
+              <th className="px-4 py-3">Hạn</th>
+              <th className="px-4 py-3">Giờ học</th>
+              <th className="px-4 py-3 text-right">Hành động</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y">
+            {tasks.map((task) => (
+              <motion.tr
+                layout
+                className="bg-card transition-colors hover:bg-card-soft/70"
+                key={task.id}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+              >
+                <td className="max-w-[360px] px-4 py-3">
+                  <button type="button" className="grid gap-1 text-left" onClick={() => onFocus(task)}>
+                    <span className="break-words font-bold">{task.title}</span>
+                    {task.description ? (
+                      <span className="line-clamp-2 text-xs leading-5 text-muted-foreground">{task.description}</span>
+                    ) : null}
+                  </button>
+                </td>
+                <td className="px-4 py-3">
+                  <Badge variant={PRIORITY_BADGE_VARIANTS[task.priority]}>
+                    {getPriorityLabel(task.priority)}
+                  </Badge>
+                </td>
+                <td className="px-4 py-3">
+                  <Badge variant={STATUS_BADGE_VARIANTS[task.status]}>
+                    {getStatusLabel(task.status)}
+                  </Badge>
+                </td>
+                <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatTaskDueDateTime(task)}</td>
+                <td className="whitespace-nowrap px-4 py-3 font-semibold">
+                  {formatFocusDuration(getTaskFocusSeconds(task))}
+                </td>
+                <td className="px-4 py-3">
+                  <div className="flex justify-end gap-2">
+                    <Button type="button" variant="outline" size="icon" title="Focus" aria-label="Focus" onClick={() => onFocus(task)}>
+                      <Timer />
+                    </Button>
+                    <Button type="button" variant="outline" size="icon" title="Sửa" aria-label="Sửa" onClick={() => onEdit(task)}>
+                      <Pencil />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      title="Hoàn thành"
+                      aria-label="Hoàn thành"
+                      disabled={!canCompleteTaskWithUpdates(task, { status: 'completed' })}
+                      onClick={() => onUpdate(task.id, { status: 'completed' })}
+                    >
+                      <CheckCircle2 />
+                    </Button>
+                    <Button type="button" variant="destructive" size="icon" title="Xóa" aria-label="Xóa" onClick={() => onDelete(task.id)}>
+                      <Trash2 />
+                    </Button>
+                  </div>
+                </td>
+              </motion.tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
   )
 }
 
@@ -101,11 +148,6 @@ export function TasksPage() {
   const sortedTasks = useMemo(
     () => sortTasksByPriorityAndDeadline(filteredTasks),
     [filteredTasks],
-  )
-
-  const eisenhowerGroups = useMemo(
-    () => groupTasksByEisenhower(filteredTasks, now),
-    [filteredTasks, now],
   )
 
   async function handleSubmit(payload) {
@@ -169,7 +211,7 @@ export function TasksPage() {
       <section>
         <h1 className="text-3xl font-bold sm:text-4xl">Công việc</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Sắp xếp theo mức ưu tiên và deadline, kết hợp Ma trận Eisenhower.
+          Quản lý task bằng bảng ưu tiên, trạng thái, deadline và thời gian học đã tích lũy.
         </p>
       </section>
 
@@ -198,17 +240,6 @@ export function TasksPage() {
           </motion.section>
         ) : null}
       </AnimatePresence>
-
-      <section className="grid gap-4 lg:grid-cols-2">
-        {EISENHOWER_QUADRANTS.map((quadrant) => (
-          <EisenhowerCard
-            key={quadrant.key}
-            quadrant={quadrant}
-            tasks={sortTasksByPriorityAndDeadline(eisenhowerGroups[quadrant.key])}
-            onFocus={openFocusMode}
-          />
-        ))}
-      </section>
 
       <section className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_220px]">
         <div className="relative">
@@ -243,16 +274,13 @@ export function TasksPage() {
           <EmptyState title="Chưa có task phù hợp" description="Thay đổi bộ lọc hoặc thêm task mới ở Dashboard." />
         ) : (
           <AnimatePresence mode="popLayout">
-            {sortedTasks.map((task) => (
-              <TaskCard
-                task={task}
-                key={task.id}
-                onEdit={setEditingTask}
-                onUpdate={handleUpdate}
-                onDelete={handleDelete}
-                onFocus={openFocusMode}
-              />
-            ))}
+            <TasksTable
+              tasks={sortedTasks}
+              onEdit={setEditingTask}
+              onUpdate={handleUpdate}
+              onDelete={handleDelete}
+              onFocus={openFocusMode}
+            />
           </AnimatePresence>
         )}
       </section>

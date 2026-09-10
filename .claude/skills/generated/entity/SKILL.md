@@ -1,65 +1,64 @@
 ---
 name: entity
-description: "Skill for the Entity area of Personal-Management. 68 symbols across 8 files."
+description: "Skill for the Entity area of Personal-Management. 58 symbols across 7 files."
 ---
 
 # Entity
 
-68 symbols | 8 files | Cohesion: 78%
+58 symbols | 7 files | Cohesion: 76%
 
 ## When to Use
 
 - Working with code in `backend/`
-- Understanding how getTaskById, updateTask, patchTask work
+- Understanding how setDescription, setStartDate, setStartTime work
 - Modifying entity-related functionality
 
 ## Key Files
 
 | File | Symbols |
 |------|---------|
-| `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | getUserId, getId, getTitle, getDescription, getStatus (+34) |
-| `backend/src/main/java/com/personalmanagement/backend/Service/TaskService.java` | getTaskById, deleteTask, updateTask, toTaskEntity, toImportedTask (+8) |
-| `backend/src/main/java/com/personalmanagement/backend/Controller/TaskController.java` | getTaskById, updateTask, patchTask, deleteTask |
+| `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | setDescription, setStartDate, setStartTime, setDueDate, setDueTime (+31) |
+| `backend/src/main/java/com/personalmanagement/backend/Service/TaskService.java` | updateTask, toTaskEntity, toImportedTask, requireTitle, validateDescription (+4) |
 | `backend/src/main/java/com/personalmanagement/backend/DTO/response/TaskResponse.java` | from, statusValue, priorityValue, formatTime |
-| `backend/src/test/java/com/personalmanagement/backend/TaskServiceTest.java` | createTask_shouldMapFrontendTaskContract, updateTask_shouldApplyFrontendPartialSessionUpdates, importTasks_shouldPreserveLegacyDataAndAllowPastDueDate |
-| `backend/src/main/java/com/personalmanagement/backend/Entity/TaskPriority.java` | getValue, fromValue |
-| `backend/src/main/java/com/personalmanagement/backend/Entity/TaskStatus.java` | getValue, fromValue |
-| `backend/src/main/java/com/personalmanagement/backend/Repository/TaskRepository.java` | findByIdAndUserId |
+| `backend/src/test/java/com/personalmanagement/backend/TaskServiceTest.java` | importTasks_shouldPreserveLegacyDataAndAllowPastDueDate, createTask_shouldMapFrontendTaskContract, updateTask_shouldApplyFrontendPartialSessionUpdates |
+| `backend/src/main/java/com/personalmanagement/backend/Entity/TaskPriority.java` | fromValue, getValue |
+| `backend/src/main/java/com/personalmanagement/backend/Entity/TaskStatus.java` | fromValue, getValue |
+| `backend/src/main/java/com/personalmanagement/backend/Controller/TaskController.java` | updateTask, patchTask |
 
 ## Entry Points
 
 Start here when exploring this area:
 
-- **`getTaskById`** (Method) — `backend/src/main/java/com/personalmanagement/backend/Controller/TaskController.java:42`
-- **`updateTask`** (Method) — `backend/src/main/java/com/personalmanagement/backend/Controller/TaskController.java:65`
-- **`patchTask`** (Method) — `backend/src/main/java/com/personalmanagement/backend/Controller/TaskController.java:73`
-- **`deleteTask`** (Method) — `backend/src/main/java/com/personalmanagement/backend/Controller/TaskController.java:81`
-- **`from`** (Method) — `backend/src/main/java/com/personalmanagement/backend/DTO/response/TaskResponse.java:35`
+- **`setDescription`** (Method) — `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java:121`
+- **`setStartDate`** (Method) — `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java:145`
+- **`setStartTime`** (Method) — `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java:153`
+- **`setDueDate`** (Method) — `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java:161`
+- **`setDueTime`** (Method) — `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java:169`
 
 ## Key Symbols
 
 | Symbol | Type | File | Line |
 |--------|------|------|------|
-| `getTaskById` | Method | `backend/src/main/java/com/personalmanagement/backend/Controller/TaskController.java` | 42 |
-| `updateTask` | Method | `backend/src/main/java/com/personalmanagement/backend/Controller/TaskController.java` | 65 |
-| `patchTask` | Method | `backend/src/main/java/com/personalmanagement/backend/Controller/TaskController.java` | 73 |
-| `deleteTask` | Method | `backend/src/main/java/com/personalmanagement/backend/Controller/TaskController.java` | 81 |
-| `from` | Method | `backend/src/main/java/com/personalmanagement/backend/DTO/response/TaskResponse.java` | 35 |
-| `statusValue` | Method | `backend/src/main/java/com/personalmanagement/backend/DTO/response/TaskResponse.java` | 58 |
-| `priorityValue` | Method | `backend/src/main/java/com/personalmanagement/backend/DTO/response/TaskResponse.java` | 62 |
-| `formatTime` | Method | `backend/src/main/java/com/personalmanagement/backend/DTO/response/TaskResponse.java` | 66 |
-| `getUserId` | Method | `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | 89 |
-| `getId` | Method | `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | 101 |
-| `getTitle` | Method | `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | 109 |
-| `getDescription` | Method | `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | 117 |
-| `getStatus` | Method | `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | 125 |
-| `getPriority` | Method | `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | 133 |
-| `getFocusSeconds` | Method | `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | 173 |
-| `getFocusLog` | Method | `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | 181 |
-| `getShortBreakSeconds` | Method | `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | 189 |
-| `getShortBreakLog` | Method | `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | 197 |
-| `getLongBreakSeconds` | Method | `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | 205 |
-| `getLongBreakLog` | Method | `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | 213 |
+| `setDescription` | Method | `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | 121 |
+| `setStartDate` | Method | `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | 145 |
+| `setStartTime` | Method | `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | 153 |
+| `setDueDate` | Method | `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | 161 |
+| `setDueTime` | Method | `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | 169 |
+| `setFocusSeconds` | Method | `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | 177 |
+| `setFocusLog` | Method | `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | 185 |
+| `setShortBreakSeconds` | Method | `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | 193 |
+| `setShortBreakLog` | Method | `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | 201 |
+| `setLongBreakSeconds` | Method | `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | 209 |
+| `setLongBreakLog` | Method | `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | 217 |
+| `setCreatedAt` | Method | `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | 225 |
+| `setUpdatedAt` | Method | `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | 233 |
+| `setCompletedAt` | Method | `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | 241 |
+| `normalizeLog` | Method | `backend/src/main/java/com/personalmanagement/backend/Entity/Task.java` | 310 |
+| `fromValue` | Method | `backend/src/main/java/com/personalmanagement/backend/Entity/TaskPriority.java` | 17 |
+| `fromValue` | Method | `backend/src/main/java/com/personalmanagement/backend/Entity/TaskStatus.java` | 17 |
+| `updateTask` | Method | `backend/src/main/java/com/personalmanagement/backend/Service/TaskService.java` | 50 |
+| `toTaskEntity` | Method | `backend/src/main/java/com/personalmanagement/backend/Service/TaskService.java` | 115 |
+| `toImportedTask` | Method | `backend/src/main/java/com/personalmanagement/backend/Service/TaskService.java` | 135 |
 
 ## Execution Flows
 
@@ -80,11 +79,12 @@ Start here when exploring this area:
 
 | Area | Connections |
 |------|-------------|
-| Backend | 18 calls |
-| Service | 4 calls |
+| Backend | 17 calls |
+| Service | 7 calls |
+| Controller | 2 calls |
 
 ## How to Explore
 
-1. `gitnexus_context({name: "getTaskById"})` — see callers and callees
+1. `gitnexus_context({name: "setDescription"})` — see callers and callees
 2. `gitnexus_query({query: "entity"})` — find related execution flows
 3. Read key files listed above for implementation details

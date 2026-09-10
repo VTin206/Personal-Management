@@ -46,16 +46,13 @@ import {
 import {
   formatFocusDuration,
   getDashboardStats,
+  getStudyTimeSummary,
   getWeeklyFocusChartData,
   getWeeklyChartData,
   isTaskOverdue,
 } from '@/utils/taskStats'
 import { getFirebaseErrorMessage } from '@/utils/firebaseErrors'
 import { getTaskDragDateUpdates } from '@/utils/taskSchedule'
-import {
-  EISENHOWER_QUADRANTS,
-  getEisenhowerQuadrantKey,
-} from '@/utils/eisenhower'
 import {
   getPriorityLabel,
   getStatusLabel,
@@ -77,24 +74,25 @@ const CALENDAR_VIEWS = {
     icon: CalendarRange,
   },
 }
-const QUADRANT_CALENDAR_STYLES = {
-  do: {
+const PRIORITY_CALENDAR_STYLES = {
+  high: {
     range: 'border-rose-200 bg-peach text-rose-950 hover:bg-peach/90',
     dot: 'bg-peach',
   },
-  schedule: {
+  medium: {
     range: 'border-violet-200 bg-lavender text-violet-950 hover:bg-lavender/90',
     dot: 'bg-lavender',
   },
-  delegate: {
+  low: {
     range: 'border-amber-200 bg-butter text-amber-950 hover:bg-butter/90',
     dot: 'bg-butter',
   },
-  reduce: {
+  default: {
     range: 'border-sky-200 bg-sky text-sky-950 hover:bg-sky/90',
     dot: 'bg-sky',
   },
 }
+const PRIORITY_LEGEND_ITEMS = ['high', 'medium', 'low']
 
 function ReportMetric({ title, value, icon: Icon, tone }) {
   return (
@@ -247,8 +245,8 @@ function sortByRange(tasks) {
 }
 
 function getCalendarStyle(task, now) {
-  const quadrantKey = getEisenhowerQuadrantKey(task, now)
-  return QUADRANT_CALENDAR_STYLES[quadrantKey] ?? QUADRANT_CALENDAR_STYLES.reduce
+  void now
+  return PRIORITY_CALENDAR_STYLES[task.priority] ?? PRIORITY_CALENDAR_STYLES.default
 }
 
 function buildCalendarTaskLanes(tasks) {
@@ -281,13 +279,13 @@ function shouldShowRangeLabel(task, day) {
   return isRangeStartInCell(task, day)
 }
 
-function QuadrantLegend() {
+function PriorityLegend() {
   return (
     <div className="flex flex-wrap gap-2 text-xs font-semibold text-muted-foreground">
-      {EISENHOWER_QUADRANTS.map((quadrant) => (
-        <span className="inline-flex items-center gap-1.5" key={quadrant.key}>
-          <span className={cn('size-2.5 rounded-full', QUADRANT_CALENDAR_STYLES[quadrant.key].dot)} />
-          {quadrant.title}
+      {PRIORITY_LEGEND_ITEMS.map((priority) => (
+        <span className="inline-flex items-center gap-1.5" key={priority}>
+          <span className={cn('size-2.5 rounded-full', PRIORITY_CALENDAR_STYLES[priority].dot)} />
+          {getPriorityLabel(priority)}
         </span>
       ))}
     </div>
@@ -542,6 +540,7 @@ export function WeeklyReportPage() {
   const weeklyData = getWeeklyChartData(tasks)
   const weeklyFocusData = getWeeklyFocusChartData(tasks)
   const stats = getDashboardStats(tasks)
+  const studySummary = getStudyTimeSummary(tasks, now)
   const totalCompletedThisWeek = weeklyData.reduce((total, item) => total + item.completed, 0)
   const totalOverdueThisWeek = weeklyData.reduce((total, item) => total + item.overdue, 0)
   const totalSessionSecondsThisWeek = weeklyFocusData.reduce((total, item) => total + item.totalSeconds, 0)
@@ -650,12 +649,13 @@ export function WeeklyReportPage() {
         <EmptyState title="Chưa có dữ liệu báo cáo" description="Task mới sẽ xuất hiện trong lịch và biểu đồ." />
       ) : (
         <>
-          <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+          <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
             <ReportMetric title="Task đã hoàn thành" value={stats.completed} icon={CheckCircle2} tone="bg-mint text-emerald-900" />
             <ReportMetric title="Task trễ hạn" value={stats.overdue} icon={Clock3} tone="bg-peach text-rose-950" />
             <ReportMetric title="Đã làm tuần này" value={totalCompletedThisWeek} icon={CalendarCheck2} tone="bg-sky text-sky-950" />
             <ReportMetric title="Trễ hạn tuần này" value={totalOverdueThisWeek} icon={BarChart3} tone="bg-butter text-amber-950" />
             <ReportMetric title="Tổng thời gian tuần này" value={formatFocusDuration(totalSessionSecondsThisWeek)} icon={Target} tone="bg-lavender text-violet-950" />
+            <ReportMetric title="Tổng thời gian tháng này" value={formatFocusDuration(studySummary.monthSeconds)} icon={ListChecks} tone="bg-card-soft text-foreground" />
           </section>
 
           <section className="grid gap-4 xl:grid-cols-2">
@@ -712,24 +712,9 @@ export function WeeklyReportPage() {
                       <Legend iconType="circle" />
                       <Bar
                         dataKey="focusHours"
-                        name="Tập trung"
+                        name="Giờ học"
                         fill="#d8ccff"
-                        stackId="sessionTime"
-                        barSize={32}
-                      />
-                      <Bar
-                        dataKey="shortBreakHours"
-                        name="Nghỉ ngắn"
-                        fill="#c6f6dd"
-                        stackId="sessionTime"
-                        barSize={32}
-                      />
-                      <Bar
-                        dataKey="longBreakHours"
-                        name="Nghỉ dài"
-                        fill="#ffd2b8"
                         radius={[8, 8, 0, 0]}
-                        stackId="sessionTime"
                         barSize={32}
                       />
                     </BarChart>
@@ -748,7 +733,7 @@ export function WeeklyReportPage() {
                       <CalendarCheck2 className="size-5 text-primary" />
                       {calendarView === 'week' ? formatWeekTitle(selectedDate) : formatMonthTitle(monthDate)}
                     </CardTitle>
-                    <QuadrantLegend />
+                    <PriorityLegend />
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     <CalendarViewSegment value={calendarView} onChange={changeCalendarView} />

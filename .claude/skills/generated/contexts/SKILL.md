@@ -43,7 +43,7 @@ Start here when exploring this area:
 
 | Area | Connections |
 |------|-------------|
-| Components | 1 calls |
+| Pages | 1 calls |
 | Services | 1 calls |
 
 ## How to Explore

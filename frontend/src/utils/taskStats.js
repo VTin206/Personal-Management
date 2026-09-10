@@ -207,6 +207,41 @@ export function buildSessionTimeUpdates(task, mode, elapsedSeconds, now = new Da
   }
 }
 
+export function sumFocusLogSeconds(tasks, dateKeys) {
+  const keySet = new Set(dateKeys)
+
+  return tasks.reduce((taskTotal, task) => {
+    const focusLog = getTaskFocusLog(task)
+
+    return taskTotal + Object.entries(focusLog).reduce((logTotal, [dateKey, value]) => {
+      if (!keySet.has(dateKey)) return logTotal
+
+      const seconds = Number(value)
+      return logTotal + (Number.isFinite(seconds) && seconds > 0 ? Math.floor(seconds) : 0)
+    }, 0)
+  }, 0)
+}
+
+export function getTotalFocusSeconds(tasks) {
+  return tasks.reduce((total, task) => total + getTaskFocusSeconds(task), 0)
+}
+
+export function getStudyTimeSummary(tasks, now = new Date()) {
+  const todayKey = getInputDateValue(normalizeNow(now))
+  const weekKeys = getCurrentWeekDays().map(getInputDateValue)
+  const currentMonthPrefix = todayKey.slice(0, 7)
+  const monthKeys = Array.from(
+    new Set(tasks.flatMap((task) => Object.keys(getTaskFocusLog(task)))),
+  ).filter((dateKey) => dateKey.startsWith(currentMonthPrefix))
+
+  return {
+    todaySeconds: sumFocusLogSeconds(tasks, [todayKey]),
+    weekSeconds: sumFocusLogSeconds(tasks, weekKeys),
+    monthSeconds: sumFocusLogSeconds(tasks, monthKeys),
+    totalSeconds: getTotalFocusSeconds(tasks),
+  }
+}
+
 export function getDashboardStats(tasks) {
   const total = tasks.length
   const completed = tasks.filter((task) => task.status === 'completed').length
@@ -243,25 +278,17 @@ export function getWeeklyChartData(tasks) {
 export function getWeeklyFocusChartData(tasks) {
   return getCurrentWeekDays().map((day) => {
     const dateKey = getInputDateValue(day)
-    const sumLogSeconds = (mode) => tasks.reduce((total, task) => {
-      const logValue = Number(getTaskSessionLog(task, mode)[dateKey])
+    const focusSeconds = tasks.reduce((total, task) => {
+      const logValue = Number(getTaskFocusLog(task)[dateKey])
       return total + (Number.isFinite(logValue) && logValue > 0 ? logValue : 0)
     }, 0)
-    const focusSeconds = sumLogSeconds('focus')
-    const shortBreakSeconds = sumLogSeconds('short')
-    const longBreakSeconds = sumLogSeconds('long')
-    const totalSeconds = focusSeconds + shortBreakSeconds + longBreakSeconds
 
     return {
       day: formatDate(day, { short: true }),
       focusHours: Number((focusSeconds / 3600).toFixed(2)),
       focusSeconds,
-      hours: Number((totalSeconds / 3600).toFixed(2)),
-      longBreakHours: Number((longBreakSeconds / 3600).toFixed(2)),
-      longBreakSeconds,
-      shortBreakHours: Number((shortBreakSeconds / 3600).toFixed(2)),
-      shortBreakSeconds,
-      totalSeconds,
+      hours: Number((focusSeconds / 3600).toFixed(2)),
+      totalSeconds: focusSeconds,
     }
   })
 }

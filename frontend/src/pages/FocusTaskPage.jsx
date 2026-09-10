@@ -6,10 +6,8 @@ import {
   CalendarDays,
   Check,
   CheckCircle2,
-  Coffee,
   Eye,
   EyeOff,
-  Gauge,
   Headphones,
   Home,
   Link2,
@@ -19,8 +17,6 @@ import {
   Pause,
   Play,
   Radio,
-  RotateCcw,
-  Settings2,
   Sparkles,
   Square,
   Target,
@@ -36,31 +32,22 @@ import mountainGrandeurFocusBackground from '@/assets/focus-mountain-grandeur.jp
 import rainBooksFocusBackground from '@/assets/focus-rain-books.jpg'
 import focusSkyBackground from '@/assets/focus-sky.jpg'
 import starryValleyFocusBackground from '@/assets/focus-starry-valley.jpg'
-import sessionSwitchSound from '@/assets/sounds/session-switch-taco-bell.mp3'
 import taskCompleteSound from '@/assets/sounds/task-complete-ding.mp3'
 import taskStartSound from '@/assets/sounds/task-start-boxing-bell.mp3'
 import { EmptyState } from '@/components/EmptyState'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Progress } from '@/components/ui/progress'
 import { useTasks } from '@/hooks/useTasks'
 import { cn } from '@/utils/cn'
 import { formatTaskDueDateTime } from '@/utils/date'
 import { getFirebaseErrorMessage } from '@/utils/firebaseErrors'
 import {
-  buildSessionTimeUpdates,
+  buildFocusTimeUpdates,
   canCompleteTaskWithUpdates,
   formatFocusDuration,
-  getTaskFocusLog,
+  getStudyTimeSummary,
   getTaskFocusSeconds,
-  getTaskLongBreakLog,
-  getTaskLongBreakSeconds,
-  getTaskSessionSeconds,
-  getTaskShortBreakLog,
-  getTaskShortBreakSeconds,
-  getTaskTotalSessionSeconds,
   isActiveWorkTask,
   isTaskOverdue,
 } from '@/utils/taskStats'
@@ -71,28 +58,6 @@ import {
   STATUS_BADGE_VARIANTS,
 } from '@/utils/taskOptions'
 
-const FOCUS_MODES = {
-  focus: {
-    key: 'focus',
-    label: 'Pomodoro',
-    title: 'Phiên tập trung',
-    icon: Target,
-  },
-  short: {
-    key: 'short',
-    label: 'Nghỉ ngắn',
-    title: 'Nạp lại năng lượng',
-    icon: Coffee,
-  },
-  long: {
-    key: 'long',
-    label: 'Nghỉ dài',
-    title: 'Thả lỏng một chút',
-    icon: Sparkles,
-  },
-}
-
-const DEFAULT_DURATIONS = { focus: 25, short: 5, long: 15 }
 const FOCUS_THEME_STORAGE_KEY = 'pastel-focus-theme'
 const DEFAULT_FOCUS_THEME_KEY = 'pastel-sky'
 const FOCUS_THEMES = [
@@ -294,61 +259,11 @@ const FOCUS_THEMES = [
 ]
 const FOCUS_THEME_MAP = Object.fromEntries(FOCUS_THEMES.map((theme) => [theme.key, theme]))
 
-function clampMinutes(value) {
-  const numberValue = Number(value)
-  if (!Number.isFinite(numberValue)) return 1
-  return Math.min(120, Math.max(1, Math.round(numberValue)))
-}
-
-function createSecondsByMode(durations) {
-  return {
-    focus: durations.focus * 60,
-    short: durations.short * 60,
-    long: durations.long * 60,
-  }
-}
-
 function formatTimer(seconds) {
   const minutes = Math.floor(seconds / 60)
   const restSeconds = seconds % 60
   return `${String(minutes).padStart(2, '0')}:${String(restSeconds).padStart(2, '0')}`
 }
-
-function getNextMode(mode) {
-  return mode === 'focus' ? 'short' : 'focus'
-}
-
-function getTimerAnchorSecondsLeft(anchor, now = Date.now()) {
-  const elapsedSeconds = Math.max(0, Math.floor((now - anchor.startedAt) / 1000))
-  return Math.max(0, anchor.secondsAtStart - elapsedSeconds)
-}
-
-function createTimerAnchor(mode, secondsAtStart, startedAt = Date.now()) {
-  return {
-    mode,
-    secondsAtStart,
-    startedAt,
-    lastSavedAt: startedAt,
-  }
-}
-
-function createTaskSessionStats(task) {
-  return {
-    taskId: task.id,
-    focusSeconds: getTaskFocusSeconds(task),
-    focusLog: getTaskFocusLog(task),
-    shortBreakSeconds: getTaskShortBreakSeconds(task),
-    shortBreakLog: getTaskShortBreakLog(task),
-    longBreakSeconds: getTaskLongBreakSeconds(task),
-    longBreakLog: getTaskLongBreakLog(task),
-  }
-}
-
-function getTaskSessionStatsTotal(stats) {
-  return (stats.focusSeconds ?? 0) + (stats.shortBreakSeconds ?? 0) + (stats.longBreakSeconds ?? 0)
-}
-
-const MAX_TIMER_SYNC_SESSIONS = 1000
 
 const FOCUS_MUSIC_STORAGE_KEY = 'pastel-focus-music-url'
 const FOCUS_MUSIC_VOLUME_KEY = 'pastel-focus-music-volume'
@@ -521,10 +436,6 @@ function playSound(src, volume = 0.5) {
   }
 }
 
-function playSessionSwitchSound() {
-  playSound(sessionSwitchSound, 0.5)
-}
-
 function playSessionStartSound() {
   playSound(taskStartSound, 0.48)
 }
@@ -546,46 +457,6 @@ function FocusBackground({ theme }) {
       <div className={cn('fixed inset-0', theme.overlayClassName)} />
       <div className={cn('fixed inset-0', theme.glowClassName)} />
     </>
-  )
-}
-
-function FocusModeButton({ modeKey, active, onClick, theme }) {
-  const mode = FOCUS_MODES[modeKey]
-  const Icon = mode.icon
-
-  return (
-    <Button
-      type="button"
-      variant="outline"
-      className={cn(
-        'h-9 rounded-full px-4 text-xs font-bold uppercase shadow-none',
-        theme.modeButtonClassName,
-        active && theme.activeModeButtonClassName,
-      )}
-      onClick={onClick}
-    >
-      <Icon />
-      {mode.label}
-    </Button>
-  )
-}
-
-function DurationField({ id, label, value, onChange }) {
-  return (
-    <div className="grid gap-2">
-      <Label className="text-xs font-bold uppercase text-slate-500" htmlFor={id}>
-        {label}
-      </Label>
-      <Input
-        id={id}
-        min="1"
-        max="120"
-        type="number"
-        value={value}
-        className="h-11 border-slate-200 bg-slate-50 text-slate-950"
-        onChange={(event) => onChange(event.target.value)}
-      />
-    </div>
   )
 }
 
@@ -924,10 +795,8 @@ export function FocusTaskPage() {
   const navigate = useNavigate()
   const { tasks, loading, error, updateTask } = useTasks()
   const task = useMemo(() => tasks.find((item) => item.id === taskId), [taskId, tasks])
-  const [mode, setMode] = useState('focus')
-  const [durations, setDurations] = useState(DEFAULT_DURATIONS)
-  const [secondsByMode, setSecondsByMode] = useState(() => createSecondsByMode(DEFAULT_DURATIONS))
   const [running, setRunning] = useState(false)
+  const [clockNow, setClockNow] = useState(() => Date.now())
   const [showSettings, setShowSettings] = useState(false)
   const [showTaskInfo, setShowTaskInfo] = useState(true)
   const [selectedThemeKey, setSelectedThemeKey] = useState(() => getStoredFocusThemeKey())
@@ -935,63 +804,27 @@ export function FocusTaskPage() {
   const hasPlayedTaskStartSound = useRef(false)
   const timerAnchorRef = useRef(null)
   const taskRef = useRef(null)
-  const sessionStatsRef = useRef({
-    taskId: '',
-    focusSeconds: 0,
-    focusLog: {},
-    shortBreakSeconds: 0,
-    shortBreakLog: {},
-    longBreakSeconds: 0,
-    longBreakLog: {},
-  })
   const sessionSaveQueueRef = useRef(Promise.resolve())
 
   useEffect(() => {
     hasPlayedTaskStartSound.current = false
+    timerAnchorRef.current = null
+    setRunning(false)
+    setClockNow(Date.now())
   }, [taskId])
 
   useEffect(() => {
     taskRef.current = task
-
-    if (!task) return
-
-    const nextSessionStats = createTaskSessionStats(task)
-
-    if (sessionStatsRef.current.taskId !== task.id) {
-      sessionStatsRef.current = nextSessionStats
-      return
-    }
-
-    if (getTaskSessionStatsTotal(nextSessionStats) >= getTaskSessionStatsTotal(sessionStatsRef.current)) {
-      sessionStatsRef.current = nextSessionStats
-    }
   }, [task])
 
-  const saveSessionSeconds = useCallback((sessionMode, elapsedSeconds) => {
+  const saveStudySeconds = useCallback((elapsedSeconds, now = new Date()) => {
     const activeTask = taskRef.current
     if (!activeTask || elapsedSeconds <= 0) return Promise.resolve()
 
-    if (sessionStatsRef.current.taskId !== activeTask.id) {
-      sessionStatsRef.current = createTaskSessionStats(activeTask)
-    }
-
-    const updates = buildSessionTimeUpdates(
-      {
-        ...activeTask,
-        focusSeconds: sessionStatsRef.current.focusSeconds,
-        focusLog: sessionStatsRef.current.focusLog,
-        shortBreakSeconds: sessionStatsRef.current.shortBreakSeconds,
-        shortBreakLog: sessionStatsRef.current.shortBreakLog,
-        longBreakSeconds: sessionStatsRef.current.longBreakSeconds,
-        longBreakLog: sessionStatsRef.current.longBreakLog,
-      },
-      sessionMode,
-      elapsedSeconds,
-    )
+    const updates = buildFocusTimeUpdates(activeTask, elapsedSeconds, now)
     if (!updates) return Promise.resolve()
 
-    sessionStatsRef.current = { ...sessionStatsRef.current, taskId: activeTask.id, ...updates }
-
+    taskRef.current = { ...activeTask, ...updates }
     sessionSaveQueueRef.current = sessionSaveQueueRef.current
       .catch(() => undefined)
       .then(() => updateTask(activeTask.id, updates))
@@ -1002,195 +835,94 @@ export function FocusTaskPage() {
     return sessionSaveQueueRef.current
   }, [updateTask])
 
-  const consumeElapsedSessionSeconds = useCallback((nowMs = Date.now()) => {
+  const flushStudyTime = useCallback((nowMs = Date.now()) => {
     const anchor = timerAnchorRef.current
-    if (!anchor) return null
+    if (!anchor) return Promise.resolve()
 
-    const saveFrom = anchor.lastSavedAt ?? anchor.startedAt
-    const sessionEnd = anchor.startedAt + anchor.secondsAtStart * 1000
-    const clampedNow = Math.min(nowMs, sessionEnd)
-    const elapsedSeconds = Math.max(0, Math.floor((clampedNow - saveFrom) / 1000))
+    const elapsedSeconds = Math.max(0, Math.floor((nowMs - anchor.lastSavedAt) / 1000))
+    if (elapsedSeconds <= 0) return Promise.resolve()
 
-    if (elapsedSeconds > 0) {
-      anchor.lastSavedAt = saveFrom + elapsedSeconds * 1000
-    }
-
-    return {
-      elapsedSeconds,
-      mode: anchor.mode,
-    }
-  }, [])
-
-  const flushSessionTime = useCallback((nowMs = Date.now()) => {
-    const elapsed = consumeElapsedSessionSeconds(nowMs)
-    if (!elapsed || elapsed.elapsedSeconds <= 0) return Promise.resolve()
-
-    return saveSessionSeconds(elapsed.mode, elapsed.elapsedSeconds)
-  }, [consumeElapsedSessionSeconds, saveSessionSeconds])
+    anchor.lastSavedAt += elapsedSeconds * 1000
+    setClockNow(nowMs)
+    return saveStudySeconds(elapsedSeconds, new Date(anchor.lastSavedAt))
+  }, [saveStudySeconds])
 
   useEffect(() => {
-    if (!running) {
-      timerAnchorRef.current = null
-      return undefined
-    }
+    if (!running) return undefined
 
-    function syncTimerWithClock() {
-      const nowMs = Date.now()
-      const elapsedByMode = {}
-      const completedModes = []
-      let anchor = timerAnchorRef.current
-      let syncedSessions = 0
+    const tickIntervalId = window.setInterval(() => setClockNow(Date.now()), 1000)
+    const saveIntervalId = window.setInterval(() => flushStudyTime(), 60_000)
+    const syncClock = () => setClockNow(Date.now())
 
-      if (!anchor) {
-        anchor = createTimerAnchor(mode, durations[mode] * 60, nowMs)
-        timerAnchorRef.current = anchor
-      }
-
-      function collectElapsed(elapsed) {
-        if (!elapsed || elapsed.elapsedSeconds <= 0) return
-        elapsedByMode[elapsed.mode] = (elapsedByMode[elapsed.mode] ?? 0) + elapsed.elapsedSeconds
-      }
-
-      while (anchor && syncedSessions < MAX_TIMER_SYNC_SESSIONS) {
-        const sessionEnd = anchor.startedAt + anchor.secondsAtStart * 1000
-
-        if (nowMs < sessionEnd) {
-          if (completedModes.length > 0) collectElapsed(consumeElapsedSessionSeconds(nowMs))
-          break
-        }
-
-        collectElapsed(consumeElapsedSessionSeconds(sessionEnd))
-        completedModes.push(anchor.mode)
-
-        const nextMode = getNextMode(anchor.mode)
-        anchor = createTimerAnchor(nextMode, durations[nextMode] * 60, sessionEnd)
-        timerAnchorRef.current = anchor
-        syncedSessions += 1
-      }
-
-      if (syncedSessions >= MAX_TIMER_SYNC_SESSIONS && anchor) {
-        anchor = createTimerAnchor(anchor.mode, durations[anchor.mode] * 60, nowMs)
-        timerAnchorRef.current = anchor
-      }
-
-      Object.entries(elapsedByMode).forEach(([sessionMode, elapsedSeconds]) => {
-        saveSessionSeconds(sessionMode, elapsedSeconds)
-      })
-
-      const activeAnchor = timerAnchorRef.current
-      if (!activeAnchor) return
-
-      const secondsLeft = getTimerAnchorSecondsLeft(activeAnchor, nowMs)
-
-      setSecondsByMode((current) => {
-        const nextSecondsByMode = { ...current }
-
-        completedModes.forEach((completedMode) => {
-          nextSecondsByMode[completedMode] = durations[completedMode] * 60
-        })
-        nextSecondsByMode[activeAnchor.mode] = secondsLeft
-
-        return Object.keys(nextSecondsByMode).every((key) => nextSecondsByMode[key] === current[key])
-          ? current
-          : nextSecondsByMode
-      })
-      setMode((currentModeKey) => (currentModeKey === activeAnchor.mode ? currentModeKey : activeAnchor.mode))
-
-      if (completedModes.length > 0) {
-        playSessionSwitchSound()
-      }
-    }
-
-    syncTimerWithClock()
-
-    const intervalId = window.setInterval(syncTimerWithClock, 500)
-    const sessionSaveIntervalId = window.setInterval(() => flushSessionTime(), 60_000)
-    window.addEventListener('focus', syncTimerWithClock)
-    document.addEventListener('visibilitychange', syncTimerWithClock)
+    window.addEventListener('focus', syncClock)
+    document.addEventListener('visibilitychange', syncClock)
 
     return () => {
-      window.clearInterval(intervalId)
-      window.clearInterval(sessionSaveIntervalId)
-      window.removeEventListener('focus', syncTimerWithClock)
-      document.removeEventListener('visibilitychange', syncTimerWithClock)
-      flushSessionTime()
+      window.clearInterval(tickIntervalId)
+      window.clearInterval(saveIntervalId)
+      window.removeEventListener('focus', syncClock)
+      document.removeEventListener('visibilitychange', syncClock)
+      flushStudyTime()
     }
-  }, [consumeElapsedSessionSeconds, durations, flushSessionTime, mode, running, saveSessionSeconds])
+  }, [flushStudyTime, running])
 
-  const currentMode = FOCUS_MODES[mode]
   const selectedTheme = FOCUS_THEME_MAP[selectedThemeKey] ?? FOCUS_THEME_MAP[DEFAULT_FOCUS_THEME_KEY]
-  const currentDuration = durations[mode] * 60
-  const secondsLeft = secondsByMode[mode]
-  const progress = Math.min(100, Math.max(0, Math.round(((currentDuration - secondsLeft) / currentDuration) * 100)))
+  const activeTaskSnapshot = taskRef.current ?? task
+  const unsavedSeconds = running && timerAnchorRef.current
+    ? Math.max(0, Math.floor((clockNow - timerAnchorRef.current.lastSavedAt) / 1000))
+    : 0
+  const currentSessionSeconds = running && timerAnchorRef.current
+    ? Math.max(0, Math.floor((clockNow - timerAnchorRef.current.sessionStartedAt) / 1000))
+    : 0
+  const liveTaskSeconds = getTaskFocusSeconds(activeTaskSnapshot) + unsavedSeconds
+  const liveTasks = activeTaskSnapshot
+    ? tasks.map((item) => (item.id === activeTaskSnapshot.id ? activeTaskSnapshot : item))
+    : tasks
+  const studySummary = getStudyTimeSummary(liveTasks, new Date(clockNow))
+  const liveStudySummary = {
+    todaySeconds: studySummary.todaySeconds + unsavedSeconds,
+    weekSeconds: studySummary.weekSeconds + unsavedSeconds,
+    monthSeconds: studySummary.monthSeconds + unsavedSeconds,
+    totalSeconds: studySummary.totalSeconds + unsavedSeconds,
+  }
   const completionBlocked = task ? !canCompleteTaskWithUpdates(task, { status: 'completed' }) : false
   const overdue = task ? isTaskOverdue(task) : false
-
-  function updateDuration(key, value) {
-    const minutes = clampMinutes(value)
-    setDurations((current) => ({ ...current, [key]: minutes }))
-
-    if (running && mode === key) return
-
-    setSecondsByMode((current) => ({ ...current, [key]: minutes * 60 }))
-  }
-
-  function switchMode(nextMode) {
-    if (nextMode === mode) return
-
-    flushSessionTime()
-    setMode(nextMode)
-
-    if (running) {
-      const secondsAtStart = secondsByMode[nextMode] <= 0 ? durations[nextMode] * 60 : secondsByMode[nextMode]
-      timerAnchorRef.current = createTimerAnchor(nextMode, secondsAtStart)
-
-      if (secondsByMode[nextMode] <= 0) {
-        setSecondsByMode((current) => ({ ...current, [nextMode]: secondsAtStart }))
-      }
-      return
-    }
-
-    timerAnchorRef.current = null
-  }
-
-  function resetTimer() {
-    flushSessionTime()
-    timerAnchorRef.current = null
-    setRunning(false)
-    setSecondsByMode((current) => ({ ...current, [mode]: durations[mode] * 60 }))
-  }
 
   function selectTheme(themeKey) {
     setSelectedThemeKey(themeKey)
     storeFocusThemeKey(themeKey)
   }
 
-  function toggleRunning() {
-    if (running) {
-      const anchor = timerAnchorRef.current
-      if (anchor) {
-        const secondsLeft = getTimerAnchorSecondsLeft(anchor)
-        flushSessionTime()
-        setSecondsByMode((current) => ({ ...current, [anchor.mode]: secondsLeft }))
-      }
-      timerAnchorRef.current = null
-      setRunning(false)
-      return
-    }
-
-    const secondsAtStart = secondsByMode[mode] <= 0 ? durations[mode] * 60 : secondsByMode[mode]
+  function startStudySession() {
+    const nowMs = Date.now()
 
     if (!hasPlayedTaskStartSound.current) {
       playSessionStartSound()
       hasPlayedTaskStartSound.current = true
     }
 
-    if (secondsByMode[mode] <= 0) {
-      setSecondsByMode((currentSecondsByMode) => ({ ...currentSecondsByMode, [mode]: secondsAtStart }))
+    timerAnchorRef.current = {
+      sessionStartedAt: nowMs,
+      lastSavedAt: nowMs,
+    }
+    setClockNow(nowMs)
+    setRunning(true)
+  }
+
+  async function stopStudySession() {
+    await flushStudyTime()
+    timerAnchorRef.current = null
+    setRunning(false)
+    setClockNow(Date.now())
+  }
+
+  function toggleRunning() {
+    if (running) {
+      stopStudySession()
+      return
     }
 
-    timerAnchorRef.current = createTimerAnchor(mode, secondsAtStart)
-    setRunning(true)
+    startStudySession()
   }
 
   async function toggleFullscreen() {
@@ -1213,7 +945,7 @@ export function FocusTaskPage() {
     setActionError('')
 
     try {
-      await flushSessionTime()
+      await flushStudyTime()
       await updateTask(task.id, { status: 'completed' })
       playTaskCompleteSound()
       timerAnchorRef.current = null
@@ -1227,7 +959,7 @@ export function FocusTaskPage() {
   if (loading) {
     return (
       <div className="grid min-h-screen place-items-center bg-slate-950 p-4">
-        <EmptyState title="Đang mở chế độ tập trung" description="Task đang được đồng bộ." />
+        <EmptyState title="Đang mở khung học tập" description="Task đang được đồng bộ." />
       </div>
     )
   }
@@ -1284,8 +1016,8 @@ export function FocusTaskPage() {
               </Link>
             </Button>
             <div className="hidden text-left text-white drop-shadow-[0_4px_18px_rgba(0,0,0,0.36)] sm:block">
-              <p className="text-2xl font-black leading-none">pastel focus</p>
-              <p className="mt-1 text-xs font-bold uppercase tracking-[0.24em] text-white/68">task room</p>
+              <p className="text-2xl font-black leading-none">study focus</p>
+              <p className="mt-1 text-xs font-bold uppercase tracking-[0.24em] text-white/68">time tracker</p>
             </div>
           </div>
 
@@ -1306,53 +1038,41 @@ export function FocusTaskPage() {
           </p>
         ) : null}
 
-        <main className="flex flex-1 flex-col items-center justify-center gap-8 px-1 pb-56 pt-8 text-center lg:pb-8">
-          <div className="flex flex-wrap justify-center gap-2">
-            {Object.keys(FOCUS_MODES).map((modeKey) => (
-              <FocusModeButton
-                key={modeKey}
-                modeKey={modeKey}
-                active={mode === modeKey}
-                theme={selectedTheme}
-                onClick={() => switchMode(modeKey)}
-              />
-            ))}
-          </div>
-
+        <main className="flex flex-1 flex-col items-center justify-center gap-8 px-1 pb-64 pt-8 text-center lg:pb-8">
           <motion.div
             className="grid w-full max-w-5xl justify-items-center gap-4"
-            key={mode}
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.22 }}
           >
             <div className={cn('flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold', selectedTheme.timerChipClassName)}>
-              <Timer className="size-4" />
-              {currentMode.title}
+              <Target className="size-4" />
+              Tích lũy giờ học cho task
             </div>
-            <p className={cn('text-[clamp(5rem,16vw,11rem)] font-black leading-none tracking-normal tabular-nums', selectedTheme.timerTextClassName)}>
-              {formatTimer(secondsLeft)}
+            <p className={cn('text-[clamp(4.5rem,14vw,10rem)] font-black leading-none tracking-normal tabular-nums', selectedTheme.timerTextClassName)}>
+              {formatTimer(liveTaskSeconds)}
             </p>
-            <div className="w-full max-w-md px-2">
-              <Progress value={progress} className={cn('h-1.5', selectedTheme.progressClassName)} />
-              <div className="mt-3 flex items-center justify-center gap-2 text-xs font-bold uppercase text-white/74">
-                <Gauge className="size-4" />
-                {progress}% phiên hiện tại
+            <div className="grid w-full max-w-3xl gap-3 sm:grid-cols-4">
+              <div className={cn('rounded-lg border px-4 py-3 text-left backdrop-blur-xl', selectedTheme.metaClassName)}>
+                <p className="text-xs font-black uppercase text-white/60">Phiên hiện tại</p>
+                <p className="mt-1 text-xl font-black tabular-nums">{formatTimer(currentSessionSeconds)}</p>
+              </div>
+              <div className={cn('rounded-lg border px-4 py-3 text-left backdrop-blur-xl', selectedTheme.metaClassName)}>
+                <p className="text-xs font-black uppercase text-white/60">Hôm nay</p>
+                <p className="mt-1 text-xl font-black">{formatFocusDuration(liveStudySummary.todaySeconds)}</p>
+              </div>
+              <div className={cn('rounded-lg border px-4 py-3 text-left backdrop-blur-xl', selectedTheme.metaClassName)}>
+                <p className="text-xs font-black uppercase text-white/60">Tuần này</p>
+                <p className="mt-1 text-xl font-black">{formatFocusDuration(liveStudySummary.weekSeconds)}</p>
+              </div>
+              <div className={cn('rounded-lg border px-4 py-3 text-left backdrop-blur-xl', selectedTheme.metaClassName)}>
+                <p className="text-xs font-black uppercase text-white/60">Tổng cá nhân</p>
+                <p className="mt-1 text-xl font-black">{formatFocusDuration(liveStudySummary.totalSeconds)}</p>
               </div>
             </div>
           </motion.div>
 
           <div className="flex w-full max-w-xl flex-wrap items-center justify-center gap-3">
-            <Button
-              type="button"
-              variant="outline"
-              className={cn('size-12 rounded-full p-0 shadow-none', selectedTheme.controlButtonClassName)}
-              aria-label="Đặt lại"
-              title="Đặt lại"
-              onClick={resetTimer}
-            >
-              <RotateCcw />
-            </Button>
             <Button
               type="button"
               className={cn(
@@ -1362,17 +1082,17 @@ export function FocusTaskPage() {
               onClick={toggleRunning}
             >
               {running ? <Pause /> : <Play />}
-              {running ? 'Tạm dừng' : 'Bắt đầu'}
+              {running ? 'Lưu & dừng' : 'Bắt đầu học'}
             </Button>
             <Button
               type="button"
               variant="outline"
               className={cn('size-12 rounded-full p-0 shadow-none', selectedTheme.controlButtonClassName)}
-              aria-label="Cài đặt phiên"
-              title="Cài đặt phiên"
+              aria-label="Chủ đề"
+              title="Chủ đề"
               onClick={() => setShowSettings(true)}
             >
-              <Settings2 />
+              <Palette />
             </Button>
           </div>
         </main>
@@ -1395,7 +1115,7 @@ export function FocusTaskPage() {
                   <div className="flex flex-wrap items-center gap-2">
                     <span className={cn('inline-flex h-7 items-center gap-1.5 rounded-full px-3 text-xs font-black', selectedTheme.taskStatusClassName)}>
                       <Target className="size-3.5" />
-                      Task đang làm
+                      Task đang học
                     </span>
                     <Badge variant={PRIORITY_BADGE_VARIANTS[task.priority]} className="h-7 rounded-full px-3 text-xs font-black">
                       {getPriorityLabel(task.priority)}
@@ -1433,19 +1153,11 @@ export function FocusTaskPage() {
                 </div>
                 <div className={cn('ml-2 mt-3 inline-flex h-8 items-center gap-2 rounded-full border px-3 text-xs font-bold', selectedTheme.metaClassName)}>
                   <Timer className="size-4" />
-                  Đã tập trung {formatFocusDuration(getTaskFocusSeconds(task))}
-                </div>
-                <div className={cn('ml-2 mt-3 inline-flex h-8 items-center gap-2 rounded-full border px-3 text-xs font-bold', selectedTheme.metaClassName)}>
-                  <Coffee className="size-4" />
-                  Nghỉ ngắn {formatFocusDuration(getTaskSessionSeconds(task, 'short'))}
+                  Task này {formatFocusDuration(liveTaskSeconds)}
                 </div>
                 <div className={cn('ml-2 mt-3 inline-flex h-8 items-center gap-2 rounded-full border px-3 text-xs font-bold', selectedTheme.metaClassName)}>
                   <Sparkles className="size-4" />
-                  Nghỉ dài {formatFocusDuration(getTaskSessionSeconds(task, 'long'))}
-                </div>
-                <div className={cn('ml-2 mt-3 inline-flex h-8 items-center gap-2 rounded-full border px-3 text-xs font-bold', selectedTheme.metaClassName)}>
-                  <Timer className="size-4" />
-                  Tổng {formatFocusDuration(getTaskTotalSessionSeconds(task))}
+                  Tháng này {formatFocusDuration(liveStudySummary.monthSeconds)}
                 </div>
               </div>
             </motion.section>
@@ -1509,58 +1221,29 @@ export function FocusTaskPage() {
               >
                 <div className="mb-5 flex items-start justify-between gap-4">
                   <div>
-                    <h2 className="text-xl font-bold">Cài đặt phiên</h2>
-                    <p className="mt-1 text-sm text-slate-500">Tùy chỉnh thời lượng và chủ đề cho task này.</p>
+                    <h2 className="text-xl font-bold">Chủ đề khung học tập</h2>
+                    <p className="mt-1 text-sm text-slate-500">Chọn không gian phù hợp cho phiên học của bạn.</p>
                   </div>
                   <Button
                     type="button"
                     variant="outline"
                     size="icon"
-                    title="Đóng cài đặt"
-                    aria-label="Đóng cài đặt"
+                    title="Đóng"
+                    aria-label="Đóng"
                     onClick={() => setShowSettings(false)}
                   >
                     <X />
                   </Button>
                 </div>
-                <div className="grid gap-5">
-                  <div className="grid gap-3">
-                    <div className="flex items-center gap-2 text-sm font-black text-slate-950">
-                      <Palette className="size-4" />
-                      Chủ đề
-                    </div>
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      {FOCUS_THEMES.map((theme) => (
-                        <FocusThemeOption
-                          key={theme.key}
-                          theme={theme}
-                          selected={selectedThemeKey === theme.key}
-                          onClick={() => selectTheme(theme.key)}
-                        />
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="grid gap-4 sm:grid-cols-3">
-                    <DurationField
-                      id="focusMinutes"
-                      label="Pomodoro"
-                      value={durations.focus}
-                      onChange={(value) => updateDuration('focus', value)}
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {FOCUS_THEMES.map((theme) => (
+                    <FocusThemeOption
+                      key={theme.key}
+                      theme={theme}
+                      selected={selectedThemeKey === theme.key}
+                      onClick={() => selectTheme(theme.key)}
                     />
-                    <DurationField
-                      id="shortMinutes"
-                      label="Nghỉ ngắn"
-                      value={durations.short}
-                      onChange={(value) => updateDuration('short', value)}
-                    />
-                    <DurationField
-                      id="longMinutes"
-                      label="Nghỉ dài"
-                      value={durations.long}
-                      onChange={(value) => updateDuration('long', value)}
-                    />
-                  </div>
+                  ))}
                 </div>
                 <Button type="button" className="mt-5 w-full" onClick={() => setShowSettings(false)}>
                   Xong

@@ -795,7 +795,8 @@ export function FocusTaskPage() {
   const navigate = useNavigate()
   const { tasks, loading, error, updateTask } = useTasks()
   const task = useMemo(() => tasks.find((item) => item.id === taskId), [taskId, tasks])
-  const [running, setRunning] = useState(false)
+  const [timerAnchor, setTimerAnchor] = useState(null)
+  const [localTaskSnapshot, setLocalTaskSnapshot] = useState(null)
   const [clockNow, setClockNow] = useState(() => Date.now())
   const [showSettings, setShowSettings] = useState(false)
   const [showTaskInfo, setShowTaskInfo] = useState(true)
@@ -809,8 +810,6 @@ export function FocusTaskPage() {
   useEffect(() => {
     hasPlayedTaskStartSound.current = false
     timerAnchorRef.current = null
-    setRunning(false)
-    setClockNow(Date.now())
   }, [taskId])
 
   useEffect(() => {
@@ -824,10 +823,17 @@ export function FocusTaskPage() {
     const updates = buildFocusTimeUpdates(activeTask, elapsedSeconds, now)
     if (!updates) return Promise.resolve()
 
-    taskRef.current = { ...activeTask, ...updates }
+    const nextTaskSnapshot = { ...activeTask, ...updates }
+
+    taskRef.current = nextTaskSnapshot
+    setLocalTaskSnapshot(nextTaskSnapshot)
     sessionSaveQueueRef.current = sessionSaveQueueRef.current
       .catch(() => undefined)
-      .then(() => updateTask(activeTask.id, updates))
+      .then(async () => {
+        const updatedTask = await updateTask(activeTask.id, updates)
+        taskRef.current = updatedTask
+        setLocalTaskSnapshot(updatedTask)
+      })
       .catch((sessionError) => {
         setActionError(getFirebaseErrorMessage(sessionError))
       })
@@ -843,9 +849,12 @@ export function FocusTaskPage() {
     if (elapsedSeconds <= 0) return Promise.resolve()
 
     anchor.lastSavedAt += elapsedSeconds * 1000
+    setTimerAnchor({ ...anchor })
     setClockNow(nowMs)
     return saveStudySeconds(elapsedSeconds, new Date(anchor.lastSavedAt))
   }, [saveStudySeconds])
+
+  const running = Boolean(timerAnchor?.taskId === taskId)
 
   useEffect(() => {
     if (!running) return undefined
@@ -867,12 +876,13 @@ export function FocusTaskPage() {
   }, [flushStudyTime, running])
 
   const selectedTheme = FOCUS_THEME_MAP[selectedThemeKey] ?? FOCUS_THEME_MAP[DEFAULT_FOCUS_THEME_KEY]
-  const activeTaskSnapshot = taskRef.current ?? task
-  const unsavedSeconds = running && timerAnchorRef.current
-    ? Math.max(0, Math.floor((clockNow - timerAnchorRef.current.lastSavedAt) / 1000))
+  const activeTimerAnchor = running ? timerAnchor : null
+  const activeTaskSnapshot = localTaskSnapshot?.id === taskId ? localTaskSnapshot : task
+  const unsavedSeconds = activeTimerAnchor
+    ? Math.max(0, Math.floor((clockNow - activeTimerAnchor.lastSavedAt) / 1000))
     : 0
-  const currentSessionSeconds = running && timerAnchorRef.current
-    ? Math.max(0, Math.floor((clockNow - timerAnchorRef.current.sessionStartedAt) / 1000))
+  const currentSessionSeconds = activeTimerAnchor
+    ? Math.max(0, Math.floor((clockNow - activeTimerAnchor.sessionStartedAt) / 1000))
     : 0
   const liveTaskSeconds = getTaskFocusSeconds(activeTaskSnapshot) + unsavedSeconds
   const liveTasks = activeTaskSnapshot
@@ -902,17 +912,18 @@ export function FocusTaskPage() {
     }
 
     timerAnchorRef.current = {
+      taskId,
       sessionStartedAt: nowMs,
       lastSavedAt: nowMs,
     }
+    setTimerAnchor(timerAnchorRef.current)
     setClockNow(nowMs)
-    setRunning(true)
   }
 
   async function stopStudySession() {
     await flushStudyTime()
     timerAnchorRef.current = null
-    setRunning(false)
+    setTimerAnchor(null)
     setClockNow(Date.now())
   }
 
@@ -949,7 +960,7 @@ export function FocusTaskPage() {
       await updateTask(task.id, { status: 'completed' })
       playTaskCompleteSound()
       timerAnchorRef.current = null
-      setRunning(false)
+      setTimerAnchor(null)
       navigate('/tasks', { replace: true })
     } catch (completeError) {
       setActionError(getFirebaseErrorMessage(completeError))

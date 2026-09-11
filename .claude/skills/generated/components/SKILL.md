@@ -36,7 +36,7 @@ Start here when exploring this area:
 - **`openTasksPage`** (Function) — `frontend/src/components/UrgentDeadlineAlert.jsx:112`
 - **`SettingsProvider`** (Function) — `frontend/src/contexts/SettingsProvider.jsx:25`
 - **`closeUpdateNotes`** (Function) — `frontend/src/pages/DashboardPage.jsx:310`
-- **`selectTheme`** (Function) — `frontend/src/pages/FocusTaskPage.jsx:890`
+- **`selectTheme`** (Function) — `frontend/src/pages/FocusTaskPage.jsx:900`
 
 ## Key Symbols
 
@@ -46,7 +46,7 @@ Start here when exploring this area:
 | `openTasksPage` | Function | `frontend/src/components/UrgentDeadlineAlert.jsx` | 112 |
 | `SettingsProvider` | Function | `frontend/src/contexts/SettingsProvider.jsx` | 25 |
 | `closeUpdateNotes` | Function | `frontend/src/pages/DashboardPage.jsx` | 310 |
-| `selectTheme` | Function | `frontend/src/pages/FocusTaskPage.jsx` | 890 |
+| `selectTheme` | Function | `frontend/src/pages/FocusTaskPage.jsx` | 900 |
 | `getAccentOption` | Function | `frontend/src/utils/settingsOptions.js` | 47 |
 | `UrgentDeadlineAlert` | Function | `frontend/src/components/UrgentDeadlineAlert.jsx` | 70 |
 | `useNow` | Function | `frontend/src/hooks/useNow.js` | 2 |
